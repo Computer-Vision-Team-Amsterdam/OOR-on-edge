@@ -1,5 +1,5 @@
 # Objectherkenning-Openbare-Ruimte
-This project is about recognising objects from public space images.
+This project is about recognising on-edge objects from public space images.
 
 
 ## Installation
@@ -7,7 +7,7 @@ This project is about recognising objects from public space images.
 #### 1. Clone the code
 
 ```bash
-git clone git@github.com:Computer-Vision-Team-Amsterdam/Objectherkenning-Openbare-Ruimte.git
+git clone git@github.com:Computer-Vision-Team-Amsterdam/OOR-on-edge.git
 ```
 
 #### 2. Install Poetry
@@ -47,7 +47,7 @@ docker pull multiarch/qemu-user-static
 docker run --rm --privileged multiarch/qemu-user-static:register --reset
 ```
 ```bash
-docker build . --network host --platform linux/arm64 --pull --load -t {IMAGE_NAME} --build-arg ML_MODEL_ID_arg=ML_MODEL_ID --build-arg PROJECT_VERSION_arg=PROJECT_VERSION
+docker build . --platform linux/arm64 --pull --load -t {IMAGE_NAME} --build-arg ML_MODEL_ID_arg=ML_MODEL_ID --build-arg PROJECT_VERSION_arg=PROJECT_VERSION
 docker save -o {PATH}/oor-docker-image.tar {IMAGE_NAME}
 ```
 Remember to replace with the correct values: ML_MODEL_ID, PROJECT_VERSION.
