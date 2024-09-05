@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 from ultralytics.engine.results import Boxes, Results
 
-logger = logging.getLogger("model_result")
+logger = logging.getLogger("detection_pipeline")
 
 
 class ModelResult:

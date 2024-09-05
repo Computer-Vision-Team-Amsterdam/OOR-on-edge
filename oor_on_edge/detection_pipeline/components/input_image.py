@@ -4,7 +4,7 @@ from typing import Dict, Tuple
 import cv2
 import numpy as np
 
-logger = logging.getLogger("image")
+logger = logging.getLogger("detection_pipeline")
 
 
 class InputImage:
