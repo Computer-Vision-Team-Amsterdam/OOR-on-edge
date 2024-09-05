@@ -20,11 +20,12 @@ azure-iot-device = {version = "^2.13.0", source = "PyPI"}
 numpy = {version = "^1.24.2", source = "PyPI"}
 pydantic = {version = "^2.8.2", source = "PyPI"}
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = {version = "^7.0.1", source = "PyPI" }
 pytest-cov = {version = "^4.0.0", source = "PyPI" }
 safety = {version = "^3.2.4", source = "PyPI"}
 pre-commit = {version = "^3.2.0", source = "PyPI"}
+folium = {version = "^0.17.0", source = "PyPI"}
 
 [tool.isort]
 profile = "black"
