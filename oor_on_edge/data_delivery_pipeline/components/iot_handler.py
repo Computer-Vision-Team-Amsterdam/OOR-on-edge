@@ -84,25 +84,32 @@ class IoTHandler:
             storage_info = device_client.get_storage_info_for_blob(
                 file_destination_path
             )
-
-            success, result = self._store_blob(storage_info, file_source_path)
-            if success:
-                logger.info(f"Upload succeeded. Result is: {result}")
-                device_client.notify_blob_upload_status(
-                    storage_info["correlationId"],
-                    True,
-                    200,
-                    "OK: {}".format(file_source_path),
+            try:
+                success, result = self._store_blob(storage_info, file_source_path)
+                if success:
+                    logger.info(f"Upload succeeded. Result is: {result}")
+                    device_client.notify_blob_upload_status(
+                        storage_info["correlationId"],
+                        True,
+                        200,
+                        "OK: {}".format(file_source_path),
+                    )
+                else:
+                    logger.error(
+                        f"Upload of {file_source_path} failed. Exception is: {result}"
+                    )
+                    device_client.notify_blob_upload_status(
+                        storage_info["correlationId"],
+                        False,
+                        500,
+                        str(result),
+                    )
+                    raise Exception(result)
+            except Exception as e:
+                logger.error(f"Upload of {file_source_path} failed. Exception is: {e}")
+                raise Exception(
+                    f"Upload of {file_source_path} failed. Exception is: {e}"
                 )
-            else:
-                logger.error(f"Upload failed. Exception is: {result}")
-                device_client.notify_blob_upload_status(
-                    storage_info["correlationId"],
-                    False,
-                    result.status_code,
-                    str(result),
-                )
-                raise Exception(result)
 
     @staticmethod
     def _store_blob(blob_info: Dict[str, str], file_name: str):
