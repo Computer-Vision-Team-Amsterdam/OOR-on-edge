@@ -292,22 +292,12 @@ class DataDetection:
         detection_results = self.model(**self.inference_params)
         torch.cuda.empty_cache()
 
-        self._process_detections_and_blur_image(
+        n_detections = self._process_detections_and_blur_image(
             detection_results,
             str(detections_path),
             image_file_name,
         )
-        return sum(
-            len(
-                np.where(
-                    np.in1d(
-                        model_result.cpu().boxes.numpy().cls,
-                        self.target_classes,
-                    )
-                )[0]
-            )
-            for model_result in detection_results
-        )
+        return n_detections
 
     @log_execution_time
     def _process_detections_and_blur_image(
@@ -315,7 +305,8 @@ class DataDetection:
         model_results: List,
         image_detection_path: str,
         image_file_name: pathlib.Path,
-    ):
+    ) -> int:
+        n_detections = 0
         for model_result in model_results:
             model_result = ModelResult(
                 model_result,
@@ -324,10 +315,11 @@ class DataDetection:
                 target_classes_conf=self.target_classes_conf,
                 sensitive_classes_conf=self.sensitive_classes_conf,
             )
-            model_result.process_detections_and_blur_sensitive_data(
+            n_detections += model_result.process_detections_and_blur_sensitive_data(
                 image_detection_path=image_detection_path,
                 image_file_name=image_file_name,
             )
+        return n_detections
 
     def _calculate_all_paths(self, metadata_csv_file_path):
         """

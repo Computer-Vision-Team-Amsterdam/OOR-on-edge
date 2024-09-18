@@ -30,7 +30,7 @@ class ModelResult:
 
     def process_detections_and_blur_sensitive_data(
         self, image_detection_path: str, image_file_name: pathlib.Path
-    ):
+    ) -> int:
         for summary_str in self._yolo_result_summary():
             logger.info(summary_str)
 
@@ -40,7 +40,7 @@ class ModelResult:
         )[0]
         if len(target_idxs) == 0:
             logger.debug("No container detected, not storing the image.")
-            return False
+            return 0
 
         sensitive_idxs = np.where(
             np.in1d(self.boxes.cls, self.sensitive_classes)
@@ -55,7 +55,7 @@ class ModelResult:
 
         self.save_result(target_idxs, image_detection_path, image_file_name)
 
-        return True
+        return len(target_idxs)
 
     def save_result(self, target_idxs, image_detection_path, image_file_name):
         pathlib.Path(image_detection_path).mkdir(parents=True, exist_ok=True)
