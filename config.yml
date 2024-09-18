@@ -34,7 +34,7 @@ detection_pipeline:
   input_image_size: [3840, 2160]
   output_image_size: [1280, 720]
   sleep_time: 30
-  training_mode: True
+  training_mode: False
   training_mode_destination_path: "/training_mode"
 
 logging:
