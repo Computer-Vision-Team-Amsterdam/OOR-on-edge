@@ -5,26 +5,19 @@ import pathlib
 import time
 from typing import List
 
-import numpy as np
 import torch
 from ultralytics import YOLO
 
-from oor_on_edge.detection_pipeline.components.input_image import (
-    InputImage,
-)
-from oor_on_edge.detection_pipeline.components.model_result import (
-    ModelResult,
-)
+from oor_on_edge.detection_pipeline.components.input_image import InputImage
+from oor_on_edge.detection_pipeline.components.model_result import ModelResult
+from oor_on_edge.settings.settings import OOROnEdgeSettings
 from oor_on_edge.utils import (
     copy_file,
+    delete_file,
     get_frame_metadata_csv_file_paths,
     get_img_name_from_csv_row,
     log_execution_time,
     move_file,
-    delete_file,
-)
-from oor_on_edge.settings.settings import (
-    OOROnEdgeSettings,
 )
 
 logger = logging.getLogger("detection_pipeline")
@@ -69,6 +62,16 @@ class DataDetection:
         )
         self.target_classes = settings["detection_pipeline"]["target_classes"]
         self.sensitive_classes = settings["detection_pipeline"]["sensitive_classes"]
+        self.target_classes_conf = (
+            settings["detection_pipeline"]["target_classes_conf"]
+            if settings["detection_pipeline"]["target_classes_conf"]
+            else self.inference_params["conf"]
+        )
+        self.sensitive_classes_conf = (
+            settings["detection_pipeline"]["sensitive_classes_conf"]
+            if settings["detection_pipeline"]["sensitive_classes_conf"]
+            else self.inference_params["conf"]
+        )
 
         self.metadata_csv_file_paths_with_errors = []
 
@@ -318,6 +321,8 @@ class DataDetection:
                 model_result,
                 target_classes=self.target_classes,
                 sensitive_classes=self.sensitive_classes,
+                target_classes_conf=self.target_classes_conf,
+                sensitive_classes_conf=self.sensitive_classes_conf,
             )
             model_result.process_detections_and_blur_sensitive_data(
                 image_detection_path=image_detection_path,

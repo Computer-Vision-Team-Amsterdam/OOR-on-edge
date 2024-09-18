@@ -48,6 +48,8 @@ class DetectionPipelineSpec(SettingsSpecModel):
     sensitive_classes: List[int]
     input_image_size: Tuple[int, int]
     output_image_size: Tuple[int, int]
+    target_classes_conf: float = None
+    sensitive_classes_conf: float = None
     sleep_time: int
     training_mode: bool
     training_mode_destination_path: str

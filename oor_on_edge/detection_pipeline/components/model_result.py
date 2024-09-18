@@ -13,13 +13,20 @@ logger = logging.getLogger("detection_pipeline")
 
 class ModelResult:
     def __init__(
-        self, model_result: Results, target_classes, sensitive_classes
+        self,
+        model_result: Results,
+        target_classes: List,
+        sensitive_classes: List,
+        target_classes_conf: float,
+        sensitive_classes_conf: float,
     ) -> None:
         self.result = model_result.cpu()
         self.image = self.result.orig_img.copy()
         self.boxes = self.result.boxes.numpy()
         self.target_classes = target_classes
         self.sensitive_classes = sensitive_classes
+        self.target_classes_conf = target_classes_conf
+        self.sensitive_classes_conf = sensitive_classes_conf
 
     def process_detections_and_blur_sensitive_data(
         self, image_detection_path: str, image_file_name: pathlib.Path
@@ -27,12 +34,18 @@ class ModelResult:
         for summary_str in self._yolo_result_summary():
             logger.info(summary_str)
 
-        target_idxs = np.where(np.in1d(self.boxes.cls, self.target_classes))[0]
+        target_idxs = np.where(
+            np.in1d(self.boxes.cls, self.target_classes)
+            & (self.boxes.conf >= self.target_classes_conf)
+        )[0]
         if len(target_idxs) == 0:
             logger.debug("No container detected, not storing the image.")
             return False
 
-        sensitive_idxs = np.where(np.in1d(self.boxes.cls, self.sensitive_classes))[0]
+        sensitive_idxs = np.where(
+            np.in1d(self.boxes.cls, self.sensitive_classes)
+            & (self.boxes.conf >= self.sensitive_classes_conf)
+        )[0]
         if len(sensitive_idxs) > 0:
             sensitive_bounding_boxes = self.boxes[sensitive_idxs].xyxy
             self.blur_inside_boxes(sensitive_bounding_boxes)

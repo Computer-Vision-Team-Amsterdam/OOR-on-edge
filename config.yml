@@ -18,7 +18,7 @@ detection_pipeline:
   detections_path: "/detections"
   inference_params:
     img_size: 1280
-    conf: 0.4
+    conf: 0.3
     save_img_flag: False
     save_txt_flag: False
     save_conf_flag: False
@@ -33,6 +33,8 @@ detection_pipeline:
   sensitive_classes: [0,1]
   input_image_size: [3840, 2160]
   output_image_size: [1280, 720]
+  target_classes_conf: 0.7
+  sensitive_classes_conf: None  # None means conf is taken from inference_params
   sleep_time: 30
   training_mode: False
   training_mode_destination_path: "/training_mode"
