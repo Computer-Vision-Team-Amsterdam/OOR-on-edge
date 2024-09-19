@@ -4,18 +4,14 @@ import os
 import pathlib
 from datetime import datetime
 
-from oor_on_edge.data_delivery_pipeline.components.iot_handler import (
-    IoTHandler,
-)
+from oor_on_edge.data_delivery_pipeline.components.iot_handler import IoTHandler
+from oor_on_edge.settings.settings import OOROnEdgeSettings
 from oor_on_edge.utils import (
+    delete_file,
     get_frame_metadata_csv_file_paths,
     get_img_name_from_csv_row,
     log_execution_time,
     save_csv_file,
-    delete_file,
-)
-from oor_on_edge.settings.settings import (
-    OOROnEdgeSettings,
 )
 
 logger = logging.getLogger("data_delivery_pipeline")
@@ -137,8 +133,11 @@ class DataDelivery:
                 detection_metadata_full_path = detections_path / pathlib.Path(
                     f"{image_full_path.stem}.txt"
                 )
-
-                if os.path.isfile(image_full_path) and os.path.isfile(
+                gps_lat = float(row[12])
+                gps_long = float(row[13])
+                if gps_lat == 0 or gps_long == 0:
+                    logger.warning(f"GPS lat or GPS lon is 0 for row: {row}")
+                elif os.path.isfile(image_full_path) and os.path.isfile(
                     detection_metadata_full_path
                 ):
                     row_detection_metadata_rows = (

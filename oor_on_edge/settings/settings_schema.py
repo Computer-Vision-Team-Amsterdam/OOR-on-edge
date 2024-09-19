@@ -17,7 +17,7 @@ class AzureIoTSpec(SettingsSpecModel):
 class DataDeliveryPipelineSpec(SettingsSpecModel):
     detections_path: str
     metadata_path: str
-    ml_model_id: int
+    ml_model_id: str
     project_version: str
     sleep_time: int
 
