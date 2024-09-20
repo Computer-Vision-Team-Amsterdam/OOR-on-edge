@@ -22,7 +22,7 @@ detection_pipeline:
     save_img_flag: False
     save_txt_flag: False
     save_conf_flag: False
-  model_name: "yolov8m_1280_v2.1_solar_spaceship_10.pt"
+  model_name: "yolov8m_1280_v2.2_curious_hill_12.pt"
   pretrained_model_path: "/model_artifacts"
   defisheye_flag: True
   defisheye_params:
@@ -32,9 +32,9 @@ detection_pipeline:
   target_classes: [2]
   sensitive_classes: [0, 1]
   input_image_size: [3840, 2160]
-  output_image_size: [1280, 720]
-  target_classes_conf: 0.7
-  sensitive_classes_conf: None  # None means conf is taken from inference_params
+  output_image_size: [1280, 720]  # null means keep original size
+  target_classes_conf: 0.7  # 'null' means conf is taken from inference_params
+  sensitive_classes_conf: null  # 'null' means conf is taken from inference_params
   sleep_time: 30
   training_mode: False
   training_mode_destination_path: "/training_mode"

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel
 
@@ -47,9 +47,9 @@ class DetectionPipelineSpec(SettingsSpecModel):
     target_classes: List[int]
     sensitive_classes: List[int]
     input_image_size: Tuple[int, int]
-    output_image_size: Tuple[int, int]
-    target_classes_conf: float = None
-    sensitive_classes_conf: float = None
+    output_image_size: Optional[Tuple[int, int]] = None
+    target_classes_conf: Optional[float] = None
+    sensitive_classes_conf: Optional[float] = None
     sleep_time: int
     training_mode: bool
     training_mode_destination_path: str
