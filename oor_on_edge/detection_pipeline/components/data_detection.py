@@ -282,8 +282,8 @@ class DataDetection:
         logger.debug(f"Detecting and blurring: {image_file_name}")
 
         image = InputImage(image_full_path=str(image_full_path))
-        image.resize(output_image_size=self.output_image_size)
-
+        if self.output_image_size:
+            image.resize(output_image_size=self.output_image_size)
         if self.defisheye_flag:
             image.defisheye(defisheye_params=self.defisheye_params)
 
