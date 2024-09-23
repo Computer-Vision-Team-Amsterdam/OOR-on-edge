@@ -5,26 +5,19 @@ import pathlib
 import time
 from typing import List
 
-import numpy as np
 import torch
 from ultralytics import YOLO
 
-from oor_on_edge.detection_pipeline.components.input_image import (
-    InputImage,
-)
-from oor_on_edge.detection_pipeline.components.model_result import (
-    ModelResult,
-)
+from oor_on_edge.detection_pipeline.components.input_image import InputImage
+from oor_on_edge.detection_pipeline.components.model_result import ModelResult
+from oor_on_edge.settings.settings import OOROnEdgeSettings
 from oor_on_edge.utils import (
     copy_file,
+    delete_file,
     get_frame_metadata_csv_file_paths,
     get_img_name_from_csv_row,
     log_execution_time,
     move_file,
-    delete_file,
-)
-from oor_on_edge.settings.settings import (
-    OOROnEdgeSettings,
 )
 
 logger = logging.getLogger("detection_pipeline")
@@ -69,6 +62,16 @@ class DataDetection:
         )
         self.target_classes = settings["detection_pipeline"]["target_classes"]
         self.sensitive_classes = settings["detection_pipeline"]["sensitive_classes"]
+        self.target_classes_conf = (
+            settings["detection_pipeline"]["target_classes_conf"]
+            if settings["detection_pipeline"]["target_classes_conf"]
+            else self.inference_params["conf"]
+        )
+        self.sensitive_classes_conf = (
+            settings["detection_pipeline"]["sensitive_classes_conf"]
+            if settings["detection_pipeline"]["sensitive_classes_conf"]
+            else self.inference_params["conf"]
+        )
 
         self.metadata_csv_file_paths_with_errors = []
 
@@ -279,8 +282,8 @@ class DataDetection:
         logger.debug(f"Detecting and blurring: {image_file_name}")
 
         image = InputImage(image_full_path=str(image_full_path))
-        image.resize(output_image_size=self.output_image_size)
-
+        if self.output_image_size:
+            image.resize(output_image_size=self.output_image_size)
         if self.defisheye_flag:
             image.defisheye(defisheye_params=self.defisheye_params)
 
@@ -289,22 +292,12 @@ class DataDetection:
         detection_results = self.model(**self.inference_params)
         torch.cuda.empty_cache()
 
-        self._process_detections_and_blur_image(
+        n_detections = self._process_detections_and_blur_image(
             detection_results,
             str(detections_path),
             image_file_name,
         )
-        return sum(
-            len(
-                np.where(
-                    np.in1d(
-                        model_result.cpu().boxes.numpy().cls,
-                        self.target_classes,
-                    )
-                )[0]
-            )
-            for model_result in detection_results
-        )
+        return n_detections
 
     @log_execution_time
     def _process_detections_and_blur_image(
@@ -312,17 +305,21 @@ class DataDetection:
         model_results: List,
         image_detection_path: str,
         image_file_name: pathlib.Path,
-    ):
+    ) -> int:
+        n_detections = 0
         for model_result in model_results:
             model_result = ModelResult(
                 model_result,
                 target_classes=self.target_classes,
                 sensitive_classes=self.sensitive_classes,
+                target_classes_conf=self.target_classes_conf,
+                sensitive_classes_conf=self.sensitive_classes_conf,
             )
-            model_result.process_detections_and_blur_sensitive_data(
+            n_detections += model_result.process_detections_and_blur_sensitive_data(
                 image_detection_path=image_detection_path,
                 image_file_name=image_file_name,
             )
+        return n_detections
 
     def _calculate_all_paths(self, metadata_csv_file_path):
         """

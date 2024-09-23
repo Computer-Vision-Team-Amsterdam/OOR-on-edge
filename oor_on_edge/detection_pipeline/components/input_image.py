@@ -21,7 +21,10 @@ class InputImage:
         output_image_size : List
             Output size on format: [width, height]
         """
-        self.image = cv2.resize(self.image, output_image_size)
+        if (self.image.shape[0] != output_image_size[1]) or (
+            self.image.shape[1] != output_image_size[0]
+        ):
+            self.image = cv2.resize(self.image, output_image_size)
 
     def defisheye(self, defisheye_params: Dict):
         """Removes fisheye effect from the images.
@@ -34,7 +37,7 @@ class InputImage:
                 distortion_params: [[-0.24083, 0.10647, 0.00083113, 0.0001802, -0.025874]]
                 input_image_size: [3840, 2160]
         """
-        if self.mapxy[0] is None and self.mapxy[1] is None:
+        if (self.mapxy[0] is None) or (self.mapxy[1] is None):
             old_w, old_h = defisheye_params["input_image_size"]
             new_h, new_w = self.image.shape[:2]
 
