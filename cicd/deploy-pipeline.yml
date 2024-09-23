@@ -16,8 +16,7 @@ parameters:
 jobs:
   - job: DeployModelContainer
     displayName: "Deploy model container on the device"
-    pool:
-      vmImage: ubuntu-22.04
+    pool: Selfhosted Azure Devops Agents
     variables:
       serviceConnection: ${{ parameters.serviceConnectionName }}
       containerRegistryName: ${{ parameters.containerRegistry }}

@@ -1,13 +1,4 @@
-#trigger:
-#  batch: true
-#  branches:
-#    include:
-#      - refs/heads/master
-#  paths:
-#    exclude:
-#    - README.md
-
-pool: Computer-Vision-Team-Amsterdam
+pool: Selfhosted Azure Devops Agents
 
 parameters:
   - name: AMLModelVersion
