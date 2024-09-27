@@ -16,8 +16,7 @@ jobs:
 - job: CodeQualityAndSecurity
   dependsOn: ${{ parameters.dependsOn }}
   displayName: Code quality checks and security scanning
-  pool:
-    vmImage: ubuntu-22.04
+  pool: Selfhosted Azure Devops Agents
 
   steps:
   - checkout: ${{ parameters.repoName }}

@@ -38,8 +38,7 @@ jobs:
 
   - job: GetProjectVersion
     displayName: Get project version number
-    pool:
-      vmImage: ubuntu-20.04
+    pool: Selfhosted Azure Devops Agents
     steps:
       - task: AzureCLI@2
         name: getProjectVersion

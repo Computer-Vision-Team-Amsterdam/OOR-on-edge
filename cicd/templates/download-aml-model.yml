@@ -32,7 +32,7 @@ jobs:
 - job: DownloadModel
   dependsOn: ${{ parameters.dependsOn }}
   displayName: Download model file(s) from Analyse Services
-  pool: Computer-Vision-Team-Amsterdam
+  pool: Selfhosted Azure Devops Agents
   steps:
    - task: AzureCLI@2
      displayName: Install and update Azure CLI ML extension
