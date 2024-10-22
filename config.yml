@@ -35,6 +35,7 @@ detection_pipeline:
   output_image_size: [1280, 720]  # null means keep original size
   target_classes_conf: 0.7  # 'null' means conf is taken from inference_params
   sensitive_classes_conf: null  # 'null' means conf is taken from inference_params
+  skip_invalid_gps: True
   sleep_time: 30
   training_mode: False
   training_mode_destination_path: "/training_mode"

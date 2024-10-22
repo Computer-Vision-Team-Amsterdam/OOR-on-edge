@@ -70,6 +70,7 @@ class DataDetection:
             if detection_settings["sensitive_classes_conf"]
             else self.inference_params["conf"]
         )
+        self.skip_invalid_gps = detection_settings["skip_invalid_gps"]
 
         self.metadata_csv_file_paths_with_errors = []
 
@@ -153,6 +154,11 @@ class DataDetection:
                     image_file_name = pathlib.Path(
                         get_img_name_from_csv_row(csv_path, row)
                     )
+                    gps_lat = float(row[12])
+                    gps_long = float(row[13])
+                    if self.skip_invalid_gps and (gps_lat == 0 or gps_long == 0):
+                        logger.debug(f"No valid GPS, skipping frame: {image_file_name}")
+                        continue
                     image_full_path = images_path / image_file_name
                     if os.path.isfile(image_full_path):
                         target_objects_detected_count += self._detect_and_blur_image(

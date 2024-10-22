@@ -50,6 +50,7 @@ class DetectionPipelineSpec(SettingsSpecModel):
     output_image_size: Optional[Tuple[int, int]] = None
     target_classes_conf: Optional[float] = None
     sensitive_classes_conf: Optional[float] = None
+    skip_invalid_gps: bool = False
     sleep_time: int
     training_mode: bool
     training_mode_destination_path: str
