@@ -30,21 +30,21 @@ class DataDetection:
         """
         Object that find containers in the images using a pre-trained YOLO model and blurs sensitive data.
         """
-        settings = OOROnEdgeSettings.get_settings()
+        detection_settings = OOROnEdgeSettings.get_settings()["detection_pipeline"]
 
-        self.images_folder = pathlib.Path(settings["detection_pipeline"]["images_path"])
-        self.detections_folder = settings["detection_pipeline"]["detections_path"]
+        self.images_folder = pathlib.Path(detection_settings["images_path"])
+        self.detections_folder = detection_settings["detections_path"]
 
-        self.training_mode = settings["detection_pipeline"]["training_mode"]
+        self.training_mode = detection_settings["training_mode"]
         self.training_mode_destination_path = pathlib.Path(
-            settings["detection_pipeline"]["training_mode_destination_path"]
+            detection_settings["training_mode_destination_path"]
         )
 
-        self.defisheye_flag = settings["detection_pipeline"]["defisheye_flag"]
-        self.defisheye_params = settings["detection_pipeline"]["defisheye_params"]
+        self.defisheye_flag = detection_settings["defisheye_flag"]
+        self.defisheye_params = detection_settings["defisheye_params"]
 
-        self.output_image_size = settings["detection_pipeline"]["output_image_size"]
-        inference_params = settings["detection_pipeline"]["inference_params"]
+        self.output_image_size = detection_settings["output_image_size"]
+        inference_params = detection_settings["inference_params"]
         self.inference_params = {
             "imgsz": inference_params.get("img_size", 640),
             "save": inference_params.get("save_img_flag", False),
@@ -53,23 +53,21 @@ class DataDetection:
             "conf": inference_params.get("conf", 0.25),
             "project": self.detections_folder,
         }
-        self.model_name = settings["detection_pipeline"]["model_name"]
+        self.model_name = detection_settings["model_name"]
         self.pretrained_model_path = os.path.join(
-            settings["detection_pipeline"]["pretrained_model_path"], self.model_name
+            detection_settings["pretrained_model_path"], self.model_name
         )
-        self.model = self._instantiate_model(
-            settings["detection_pipeline"]["sleep_time"]
-        )
-        self.target_classes = settings["detection_pipeline"]["target_classes"]
-        self.sensitive_classes = settings["detection_pipeline"]["sensitive_classes"]
+        self.model = self._instantiate_model(detection_settings["sleep_time"])
+        self.target_classes = detection_settings["target_classes"]
+        self.sensitive_classes = detection_settings["sensitive_classes"]
         self.target_classes_conf = (
-            settings["detection_pipeline"]["target_classes_conf"]
-            if settings["detection_pipeline"]["target_classes_conf"]
+            detection_settings["target_classes_conf"]
+            if detection_settings["target_classes_conf"]
             else self.inference_params["conf"]
         )
         self.sensitive_classes_conf = (
-            settings["detection_pipeline"]["sensitive_classes_conf"]
-            if settings["detection_pipeline"]["sensitive_classes_conf"]
+            detection_settings["sensitive_classes_conf"]
+            if detection_settings["sensitive_classes_conf"]
             else self.inference_params["conf"]
         )
 
