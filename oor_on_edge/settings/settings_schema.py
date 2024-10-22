@@ -51,6 +51,7 @@ class DetectionPipelineSpec(SettingsSpecModel):
     target_classes_conf: Optional[float] = None
     sensitive_classes_conf: Optional[float] = None
     skip_invalid_gps: bool = False
+    acceptable_gps_delay: float = float("inf")
     sleep_time: int
     training_mode: bool
     training_mode_destination_path: str

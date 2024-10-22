@@ -3,6 +3,7 @@ import logging
 import os
 import pathlib
 import time
+from datetime import datetime
 from typing import List
 
 import torch
@@ -71,6 +72,7 @@ class DataDetection:
             else self.inference_params["conf"]
         )
         self.skip_invalid_gps = detection_settings["skip_invalid_gps"]
+        self.gps_accept_delay = float(detection_settings["acceptable_gps_delay"])
 
         self.metadata_csv_file_paths_with_errors = []
 
@@ -127,6 +129,26 @@ class DataDetection:
             elif metadata_csv_file_path not in self.metadata_csv_file_paths_with_errors:
                 self._delete_data_step(metadata_csv_file_path=metadata_csv_file_path)
 
+    def _accept_gps(self, row: List[str]) -> bool:
+        """
+        Check whether GPS signal is valid and has an acceptable delay.
+        """
+        gps_valid = True
+        accept_delay = True
+
+        if self.skip_invalid_gps:
+            gps_lat = float(row[12])
+            gps_long = float(row[13])
+            gps_valid = gps_lat == 0 or gps_long == 0
+
+        if gps_valid and (self.gps_accept_delay != float("inf")):
+            frame_timestamp = datetime.fromtimestamp(float(row[0]))
+            gps_internal_timestamp = datetime.fromtimestamp(float(row[16]))
+            gps_delay = abs((frame_timestamp - gps_internal_timestamp).total_seconds())
+            accept_delay = gps_delay <= self.gps_accept_delay
+
+        return gps_valid and accept_delay
+
     @log_execution_time
     def _detect_and_blur_step(self, metadata_csv_file_path):
         """
@@ -154,9 +176,7 @@ class DataDetection:
                     image_file_name = pathlib.Path(
                         get_img_name_from_csv_row(csv_path, row)
                     )
-                    gps_lat = float(row[12])
-                    gps_long = float(row[13])
-                    if self.skip_invalid_gps and (gps_lat == 0 or gps_long == 0):
+                    if not self._accept_gps(row=row):
                         logger.debug(f"No valid GPS, skipping frame: {image_file_name}")
                         continue
                     image_full_path = images_path / image_file_name
