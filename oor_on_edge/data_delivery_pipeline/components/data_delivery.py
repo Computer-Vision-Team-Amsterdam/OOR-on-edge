@@ -133,11 +133,7 @@ class DataDelivery:
                 detection_metadata_full_path = detections_path / pathlib.Path(
                     f"{image_full_path.stem}.txt"
                 )
-                gps_lat = float(row[12])
-                gps_long = float(row[13])
-                if gps_lat == 0 or gps_long == 0:
-                    logger.warning(f"GPS lat or GPS lon is 0 for row: {row}")
-                elif os.path.isfile(image_full_path) and os.path.isfile(
+                if os.path.isfile(image_full_path) and os.path.isfile(
                     detection_metadata_full_path
                 ):
                     row_detection_metadata_rows = (
