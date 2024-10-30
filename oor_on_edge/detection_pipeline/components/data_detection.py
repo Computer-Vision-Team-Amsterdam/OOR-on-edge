@@ -3,6 +3,7 @@ import logging
 import os
 import pathlib
 import time
+from datetime import datetime
 from typing import List
 
 import torch
@@ -30,21 +31,21 @@ class DataDetection:
         """
         Object that find containers in the images using a pre-trained YOLO model and blurs sensitive data.
         """
-        settings = OOROnEdgeSettings.get_settings()
+        detection_settings = OOROnEdgeSettings.get_settings()["detection_pipeline"]
 
-        self.images_folder = pathlib.Path(settings["detection_pipeline"]["images_path"])
-        self.detections_folder = settings["detection_pipeline"]["detections_path"]
+        self.images_folder = pathlib.Path(detection_settings["images_path"])
+        self.detections_folder = detection_settings["detections_path"]
 
-        self.training_mode = settings["detection_pipeline"]["training_mode"]
+        self.training_mode = detection_settings["training_mode"]
         self.training_mode_destination_path = pathlib.Path(
-            settings["detection_pipeline"]["training_mode_destination_path"]
+            detection_settings["training_mode_destination_path"]
         )
 
-        self.defisheye_flag = settings["detection_pipeline"]["defisheye_flag"]
-        self.defisheye_params = settings["detection_pipeline"]["defisheye_params"]
+        self.defisheye_flag = detection_settings["defisheye_flag"]
+        self.defisheye_params = detection_settings["defisheye_params"]
 
-        self.output_image_size = settings["detection_pipeline"]["output_image_size"]
-        inference_params = settings["detection_pipeline"]["inference_params"]
+        self.output_image_size = detection_settings["output_image_size"]
+        inference_params = detection_settings["inference_params"]
         self.inference_params = {
             "imgsz": inference_params.get("img_size", 640),
             "save": inference_params.get("save_img_flag", False),
@@ -53,25 +54,25 @@ class DataDetection:
             "conf": inference_params.get("conf", 0.25),
             "project": self.detections_folder,
         }
-        self.model_name = settings["detection_pipeline"]["model_name"]
+        self.model_name = detection_settings["model_name"]
         self.pretrained_model_path = os.path.join(
-            settings["detection_pipeline"]["pretrained_model_path"], self.model_name
+            detection_settings["pretrained_model_path"], self.model_name
         )
-        self.model = self._instantiate_model(
-            settings["detection_pipeline"]["sleep_time"]
-        )
-        self.target_classes = settings["detection_pipeline"]["target_classes"]
-        self.sensitive_classes = settings["detection_pipeline"]["sensitive_classes"]
+        self.model = self._instantiate_model(detection_settings["sleep_time"])
+        self.target_classes = detection_settings["target_classes"]
+        self.sensitive_classes = detection_settings["sensitive_classes"]
         self.target_classes_conf = (
-            settings["detection_pipeline"]["target_classes_conf"]
-            if settings["detection_pipeline"]["target_classes_conf"]
+            detection_settings["target_classes_conf"]
+            if detection_settings["target_classes_conf"]
             else self.inference_params["conf"]
         )
         self.sensitive_classes_conf = (
-            settings["detection_pipeline"]["sensitive_classes_conf"]
-            if settings["detection_pipeline"]["sensitive_classes_conf"]
+            detection_settings["sensitive_classes_conf"]
+            if detection_settings["sensitive_classes_conf"]
             else self.inference_params["conf"]
         )
+        self.skip_invalid_gps = detection_settings["skip_invalid_gps"]
+        self.gps_accept_delay = float(detection_settings["acceptable_gps_delay"])
 
         self.metadata_csv_file_paths_with_errors = []
 
@@ -128,6 +129,27 @@ class DataDetection:
             elif metadata_csv_file_path not in self.metadata_csv_file_paths_with_errors:
                 self._delete_data_step(metadata_csv_file_path=metadata_csv_file_path)
 
+    def _accept_gps(self, row: List[str]) -> bool:
+        """
+        Check whether GPS signal is valid and has an acceptable delay.
+        """
+        gps_valid = True
+        accept_delay = True
+        gps_delay = float("nan")
+
+        if self.skip_invalid_gps:
+            gps_lat = float(row[12])
+            gps_long = float(row[13])
+            gps_valid = gps_lat != 0 and gps_long != 0
+
+        if gps_valid and (self.gps_accept_delay != float("inf")):
+            frame_timestamp = datetime.fromtimestamp(float(row[2]))
+            gps_internal_timestamp = datetime.fromtimestamp(float(row[16]))
+            gps_delay = abs((frame_timestamp - gps_internal_timestamp).total_seconds())
+            accept_delay = gps_delay <= self.gps_accept_delay
+
+        return (gps_valid and accept_delay), gps_delay
+
     @log_execution_time
     def _detect_and_blur_step(self, metadata_csv_file_path):
         """
@@ -155,6 +177,12 @@ class DataDetection:
                     image_file_name = pathlib.Path(
                         get_img_name_from_csv_row(csv_path, row)
                     )
+                    accept_gps, gps_delay = self._accept_gps(row=row)
+                    if not accept_gps:
+                        logger.debug(
+                            f"No valid GPS (delay={gps_delay:.1f}s), skipping frame: {image_file_name}"
+                        )
+                        continue
                     image_full_path = images_path / image_file_name
                     if os.path.isfile(image_full_path):
                         target_objects_detected_count += self._detect_and_blur_image(
