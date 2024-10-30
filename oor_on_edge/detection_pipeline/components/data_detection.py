@@ -143,7 +143,7 @@ class DataDetection:
             gps_valid = gps_lat != 0 and gps_long != 0
 
         if gps_valid and (self.gps_accept_delay != float("inf")):
-            frame_timestamp = datetime.fromtimestamp(float(row[0]))
+            frame_timestamp = datetime.fromtimestamp(float(row[2]))
             gps_internal_timestamp = datetime.fromtimestamp(float(row[16]))
             gps_delay = abs((frame_timestamp - gps_internal_timestamp).total_seconds())
             accept_delay = gps_delay <= self.gps_accept_delay
