@@ -135,11 +135,12 @@ class DataDetection:
         """
         gps_valid = True
         accept_delay = True
+        gps_delay = float("nan")
 
         if self.skip_invalid_gps:
             gps_lat = float(row[12])
             gps_long = float(row[13])
-            gps_valid = gps_lat == 0 or gps_long == 0
+            gps_valid = gps_lat != 0 and gps_long != 0
 
         if gps_valid and (self.gps_accept_delay != float("inf")):
             frame_timestamp = datetime.fromtimestamp(float(row[0]))
@@ -147,7 +148,7 @@ class DataDetection:
             gps_delay = abs((frame_timestamp - gps_internal_timestamp).total_seconds())
             accept_delay = gps_delay <= self.gps_accept_delay
 
-        return gps_valid and accept_delay
+        return (gps_valid and accept_delay), gps_delay
 
     @log_execution_time
     def _detect_and_blur_step(self, metadata_csv_file_path):
@@ -176,8 +177,11 @@ class DataDetection:
                     image_file_name = pathlib.Path(
                         get_img_name_from_csv_row(csv_path, row)
                     )
-                    if not self._accept_gps(row=row):
-                        logger.debug(f"No valid GPS, skipping frame: {image_file_name}")
+                    accept_gps, gps_delay = self._accept_gps(row=row)
+                    if not accept_gps:
+                        logger.debug(
+                            f"No valid GPS (delay={gps_delay:.1f}s), skipping frame: {image_file_name}"
+                        )
                         continue
                     image_full_path = images_path / image_file_name
                     if os.path.isfile(image_full_path):
