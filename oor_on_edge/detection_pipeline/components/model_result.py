@@ -1,7 +1,7 @@
 import logging
 import os
 import pathlib
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import cv2
 import numpy as np
@@ -54,8 +54,29 @@ class ModelResult:
         self.draw_bounding_boxes(target_bounding_boxes)
 
         self.save_result(target_idxs, image_detection_path, image_file_name)
+        self.log_data_minimisation_stats(image_name=image_file_name.stem)
 
         return len(target_idxs)
+
+    def log_data_minimisation_stats(self, image_name: str):
+        stats: Dict[str, int] = {}
+        for sensitive_cls in self.sensitive_classes:
+            cls_stat = 0
+            sensitive_idxs = np.where(
+                np.in1d(self.boxes.cls, sensitive_cls)
+                & (self.boxes.conf >= self.sensitive_classes_conf)
+            )[0]
+            if len(sensitive_idxs) > 0:
+                for box in self.boxes[sensitive_idxs].xyxy:
+                    x_min, y_min, x_max, y_max = map(int, box)
+                    cls_stat += (x_max - x_min) * (y_max - y_min)
+            stats[self.result.names[sensitive_cls]] = cls_stat
+
+        stats_str = f"Pixels blurred in {image_name}: {{"
+        for cls_name, blur_count in stats.items():
+            stats_str = stats_str + f"{cls_name}: {blur_count}, "
+        stats_str = stats_str[0:-2] + "}"
+        logger.info(stats_str)
 
     def save_result(self, target_idxs, image_detection_path, image_file_name):
         pathlib.Path(image_detection_path).mkdir(parents=True, exist_ok=True)
@@ -147,7 +168,7 @@ class ModelResult:
         boxes: Union[List[Tuple[float, float, float, float]], npt.NDArray[np.float_]],
         blur_kernel_size: int = 165,
         box_padding: int = 0,
-    ):
+    ) -> int:
         """
         Apply GaussianBlur with given kernel size to the area given by the bounding box(es).
 
@@ -159,11 +180,6 @@ class ModelResult:
             Kernel size (used for both width and height) for GaussianBlur.
         box_padding : int (default: 0)
             Optional: increase box by this amount of pixels before applying the blur.
-
-        Return
-        ------
-        image : numpy.ndarray
-            The image blurred.
         """
         img_height, img_width, _ = self.image.shape
 
