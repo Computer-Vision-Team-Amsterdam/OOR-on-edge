@@ -41,6 +41,10 @@ class DataDetection:
             detection_settings["training_mode_destination_path"]
         )
 
+        self.sensitive_stats_file = os.path.join(
+            detection_settings["training_mode_destination_path"], "blurring_stats.txt"
+        )
+
         self.defisheye_flag = detection_settings["defisheye_flag"]
         self.defisheye_params = detection_settings["defisheye_params"]
 
@@ -342,6 +346,7 @@ class DataDetection:
                 sensitive_classes=self.sensitive_classes,
                 target_classes_conf=self.target_classes_conf,
                 sensitive_classes_conf=self.sensitive_classes_conf,
+                sensitive_stats_output_file=self.sensitive_stats_file,
             )
             n_detections += model_result.process_detections_and_blur_sensitive_data(
                 image_detection_path=image_detection_path,

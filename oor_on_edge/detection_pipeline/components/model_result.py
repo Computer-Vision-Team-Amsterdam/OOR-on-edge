@@ -19,6 +19,7 @@ class ModelResult:
         sensitive_classes: List,
         target_classes_conf: float,
         sensitive_classes_conf: float,
+        sensitive_stats_output_file: str,
     ) -> None:
         self.result = model_result.cpu()
         self.image = self.result.orig_img.copy()
@@ -27,6 +28,7 @@ class ModelResult:
         self.sensitive_classes = sensitive_classes
         self.target_classes_conf = target_classes_conf
         self.sensitive_classes_conf = sensitive_classes_conf
+        self.sensitive_stats_output_file = sensitive_stats_output_file
 
     def process_detections_and_blur_sensitive_data(
         self, image_detection_path: str, image_file_name: pathlib.Path
@@ -77,6 +79,8 @@ class ModelResult:
             stats_str = stats_str + f"{cls_name}: {blur_count}, "
         stats_str = stats_str[0:-2] + "}"
         logger.info(stats_str)
+        with open(self.sensitive_stats_output_file, "a") as file:
+            file.write(stats_str + "\n")
 
     def save_result(self, target_idxs, image_detection_path, image_file_name):
         pathlib.Path(image_detection_path).mkdir(parents=True, exist_ok=True)
