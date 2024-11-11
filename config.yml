@@ -40,6 +40,7 @@ detection_pipeline:
   sleep_time: 30
   training_mode: False
   training_mode_destination_path: "/training_mode"
+  log_blurring_stats: True
 
 logging:
   loglevel_own: DEBUG  # override loglevel for packages defined in `own_packages`

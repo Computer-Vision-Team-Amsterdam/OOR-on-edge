@@ -19,7 +19,8 @@ class ModelResult:
         sensitive_classes: List,
         target_classes_conf: float,
         sensitive_classes_conf: float,
-        sensitive_stats_output_file: str,
+        blurring_stats_output_file: str,
+        log_blurring_stats: bool = False,
     ) -> None:
         self.result = model_result.cpu()
         self.image = self.result.orig_img.copy()
@@ -28,7 +29,8 @@ class ModelResult:
         self.sensitive_classes = sensitive_classes
         self.target_classes_conf = target_classes_conf
         self.sensitive_classes_conf = sensitive_classes_conf
-        self.sensitive_stats_output_file = sensitive_stats_output_file
+        self.sensitive_stats_output_file = blurring_stats_output_file
+        self.log_blurring_stats = log_blurring_stats
 
     def process_detections_and_blur_sensitive_data(
         self, image_detection_path: str, image_file_name: pathlib.Path
@@ -56,7 +58,8 @@ class ModelResult:
         self.draw_bounding_boxes(target_bounding_boxes)
 
         self.save_result(target_idxs, image_detection_path, image_file_name)
-        self.log_data_minimisation_stats(image_name=image_file_name.stem)
+        if self.log_blurring_stats:
+            self.log_data_minimisation_stats(image_name=image_file_name.stem)
 
         return len(target_idxs)
 
