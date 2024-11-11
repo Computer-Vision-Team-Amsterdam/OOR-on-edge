@@ -172,7 +172,7 @@ class ModelResult:
         boxes: Union[List[Tuple[float, float, float, float]], npt.NDArray[np.float_]],
         blur_kernel_size: int = 165,
         box_padding: int = 0,
-    ) -> int:
+    ):
         """
         Apply GaussianBlur with given kernel size to the area given by the bounding box(es).
 
