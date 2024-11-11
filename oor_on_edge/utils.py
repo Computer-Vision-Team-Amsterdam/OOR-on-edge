@@ -51,8 +51,15 @@ def count_files_in_folder_tree(root_folder: pathlib.Path, file_type: str):
 
 
 def get_img_name_from_csv_row(csv_path, row):
-    csv_path_split = csv_path.stem.split(sep="-", maxsplit=1)
-    img_name = f"0-{csv_path_split[1]}-{row[1]}.jpg"
+    # OLD solution
+    # csv_path_split = csv_path.stem.split(sep="-", maxsplit=1)
+    # img_name = f"0-{csv_path_split[1]}-{row[1]}.jpg"
+
+    # NEW solution 11/11/2024
+    img_name = f"{csv_path.stem}-{row[1].zfill(5)}.jpg"
+
+    # Possible future solution
+    # img_name = row[-1]
     return img_name
 
 

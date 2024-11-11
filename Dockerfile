@@ -12,22 +12,19 @@ RUN apt-get update  \
     nano \
     python3-dev \
     build-essential \
-    && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV PATH=/root/.local/bin:$PATH
-
-RUN python3 -m pip install --upgrade pip
 
 WORKDIR /usr/src
 
 COPY requirements_on_edge.txt .
 
-# Need to install this separately to prevent CVToolkit deps from installing Torch
-RUN python3 -m pip install --no-deps git+https://github.com/Computer-Vision-Team-Amsterdam/CVToolkit.git
-
-RUN python3 -m pip install -r requirements_on_edge.txt
+# Need to install CVToolkit separately to prevent it from re-installing Torch
+RUN python3 -m pip install --upgrade pip \
+    && python3 -m pip install --no-deps git+https://github.com/Computer-Vision-Team-Amsterdam/CVToolkit.git \
+    && python3 -m pip install -r requirements_on_edge.txt
 
 COPY oor_on_edge oor_on_edge
 COPY config.yml config.yml

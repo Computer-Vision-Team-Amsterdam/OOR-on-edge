@@ -16,6 +16,8 @@ from oor_on_edge.utils import (
 
 logger = logging.getLogger("data_delivery_pipeline")
 
+METADATA_N_FIELDS = 17  # The number of fields we want to preserve
+
 
 class DataDelivery:
     def __init__(self):
@@ -146,7 +148,9 @@ class DataDelivery:
                     )
                     detection_metadata_rows.extend(row_detection_metadata_rows)
                     filtered_frame_metadata_rows.append(
-                        [image_file_name] + row + self.model_and_code_version
+                        [image_file_name]
+                        + row[:METADATA_N_FIELDS]
+                        + self.model_and_code_version
                     )
                     images_delivered += 1
 
