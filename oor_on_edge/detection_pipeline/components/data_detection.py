@@ -43,7 +43,7 @@ class DataDetection:
 
         self.blurred_labels_folder = os.path.join(
             detection_settings["training_mode_destination_path"],
-            f"blurring_labels_{datetime.now().strftime('%y%m%d-%H%M%S')}",
+            f"blurring_labels_{datetime.now().strftime('%y%m%d')}",
         )
         self.save_blurred_labels = detection_settings["save_blurred_labels"]
         if self.save_blurred_labels:
