@@ -77,11 +77,11 @@ class ModelResult:
                     cls_stat += (x_max - x_min) * (y_max - y_min)
             stats[self.result.names[sensitive_cls]] = cls_stat
 
-        stats_str = f"Pixels blurred in {image_name}: {{"
+        stats_str = f"{image_name}: {{"
         for cls_name, blur_count in stats.items():
             stats_str = stats_str + f"{cls_name}: {blur_count}, "
         stats_str = stats_str[0:-2] + "}"
-        logger.info(stats_str)
+        logger.info(f"Pixels blurred in  {stats_str}")
         with open(self.sensitive_stats_output_file, "a") as file:
             file.write(stats_str + "\n")
 
