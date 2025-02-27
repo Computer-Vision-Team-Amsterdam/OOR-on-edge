@@ -23,8 +23,9 @@ COPY requirements_on_edge.txt .
 
 # Need to install CVToolkit separately to prevent it from re-installing Torch
 RUN python3 -m pip install --upgrade pip \
-    && python3 -m pip install --no-deps git+https://github.com/Computer-Vision-Team-Amsterdam/CVToolkit.git \
-    && python3 -m pip install -r requirements_on_edge.txt
+    && python3 -m pip install "setuptools<71.0.0"
+RUN python3 -m pip install --no-deps git+https://github.com/Computer-Vision-Team-Amsterdam/CVToolkit.git
+RUN python3 -m pip install -r requirements_on_edge.txt
 
 COPY oor_on_edge oor_on_edge
 COPY config.yml config.yml
