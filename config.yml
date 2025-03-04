@@ -40,6 +40,7 @@ detection_pipeline:
   sleep_time: 30
   training_mode: False
   training_mode_destination_path: "/training_mode"
+  save_blurred_labels: True  # If True, annotations of blurred objects will be saved in training_mode_destination_path
 
 logging:
   loglevel_own: DEBUG  # override loglevel for packages defined in `own_packages`

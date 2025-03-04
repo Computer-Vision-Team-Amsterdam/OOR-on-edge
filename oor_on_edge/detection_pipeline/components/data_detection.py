@@ -41,6 +41,14 @@ class DataDetection:
             detection_settings["training_mode_destination_path"]
         )
 
+        self.blurred_labels_folder = os.path.join(
+            detection_settings["training_mode_destination_path"],
+            f"blurring_labels_{datetime.now().strftime('%y%m%d')}",
+        )
+        self.save_blurred_labels = detection_settings["save_blurred_labels"]
+        if self.save_blurred_labels:
+            os.makedirs(self.blurred_labels_folder, exist_ok=True)
+
         self.defisheye_flag = detection_settings["defisheye_flag"]
         self.defisheye_params = detection_settings["defisheye_params"]
 
@@ -342,6 +350,8 @@ class DataDetection:
                 sensitive_classes=self.sensitive_classes,
                 target_classes_conf=self.target_classes_conf,
                 sensitive_classes_conf=self.sensitive_classes_conf,
+                blurred_labels_folder=self.blurred_labels_folder,
+                save_blurred_labels=self.save_blurred_labels,
             )
             n_detections += model_result.process_detections_and_blur_sensitive_data(
                 image_detection_path=image_detection_path,

@@ -19,6 +19,8 @@ class ModelResult:
         sensitive_classes: List,
         target_classes_conf: float,
         sensitive_classes_conf: float,
+        blurred_labels_folder: str,
+        save_blurred_labels: bool = False,
     ) -> None:
         self.result = model_result.cpu()
         self.image = self.result.orig_img.copy()
@@ -27,6 +29,8 @@ class ModelResult:
         self.sensitive_classes = sensitive_classes
         self.target_classes_conf = target_classes_conf
         self.sensitive_classes_conf = sensitive_classes_conf
+        self.blurred_labels_folder = blurred_labels_folder
+        self.save_blurred_labels = save_blurred_labels
 
     def process_detections_and_blur_sensitive_data(
         self, image_detection_path: str, image_file_name: pathlib.Path
@@ -53,11 +57,15 @@ class ModelResult:
         target_bounding_boxes = self.boxes[target_idxs].xyxy
         self.draw_bounding_boxes(target_bounding_boxes)
 
-        self.save_result(target_idxs, image_detection_path, image_file_name)
+        self.save_result(
+            target_idxs, sensitive_idxs, image_detection_path, image_file_name
+        )
 
         return len(target_idxs)
 
-    def save_result(self, target_idxs, image_detection_path, image_file_name):
+    def save_result(
+        self, target_idxs, sensitive_idxs, image_detection_path, image_file_name
+    ):
         pathlib.Path(image_detection_path).mkdir(parents=True, exist_ok=True)
         result_full_path = os.path.join(image_detection_path, image_file_name)
         annotation_str = self._get_annotation_string_from_boxes(self.boxes[target_idxs])
@@ -68,6 +76,18 @@ class ModelResult:
         cv2.imwrite(result_full_path, self.image)
         with open(annotation_path, "w") as f:
             f.write(annotation_str)
+
+        if self.save_blurred_labels:
+            annotation_str = self._get_annotation_string_from_boxes(
+                self.boxes[sensitive_idxs]
+            )
+            annotation_path = os.path.join(
+                self.blurred_labels_folder, f"{image_file_name.stem}.txt"
+            )
+            logger.debug(f"Blurred labels path: {annotation_path}")
+            with open(annotation_path, "w") as f:
+                f.write(annotation_str)
+
         logger.debug("Saved result from model.")
 
     @staticmethod
@@ -159,11 +179,6 @@ class ModelResult:
             Kernel size (used for both width and height) for GaussianBlur.
         box_padding : int (default: 0)
             Optional: increase box by this amount of pixels before applying the blur.
-
-        Return
-        ------
-        image : numpy.ndarray
-            The image blurred.
         """
         img_height, img_width, _ = self.image.shape
 

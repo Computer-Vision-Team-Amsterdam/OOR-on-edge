@@ -55,6 +55,7 @@ class DetectionPipelineSpec(SettingsSpecModel):
     sleep_time: int
     training_mode: bool
     training_mode_destination_path: str
+    save_blurred_labels: bool = False
 
 
 class LoggingSpec(SettingsSpecModel):
