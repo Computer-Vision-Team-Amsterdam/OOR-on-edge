@@ -1,12 +1,14 @@
+import json
 import logging
 import os
-import pathlib
 from typing import List, Tuple, Union
 
 import cv2
 import numpy as np
 import numpy.typing as npt
 from ultralytics.engine.results import Boxes, Results
+
+from oor_on_edge.detection_pipeline.components.metadata import FrameMetadata
 
 logger = logging.getLogger("detection_pipeline")
 
@@ -15,14 +17,17 @@ class ModelResult:
     def __init__(
         self,
         model_result: Results,
+        frame_metadata: FrameMetadata,
         target_classes: List,
         sensitive_classes: List,
         target_classes_conf: float,
         sensitive_classes_conf: float,
         blurred_labels_folder: str,
         save_blurred_labels: bool = False,
+        draw_boxes: bool = True,
     ) -> None:
         self.result = model_result.cpu()
+        self.frame_metadata = frame_metadata
         self.image = self.result.orig_img.copy()
         self.boxes = self.result.boxes.numpy()
         self.target_classes = target_classes
@@ -31,9 +36,10 @@ class ModelResult:
         self.sensitive_classes_conf = sensitive_classes_conf
         self.blurred_labels_folder = blurred_labels_folder
         self.save_blurred_labels = save_blurred_labels
+        self.draw_boxes = draw_boxes
 
     def process_detections_and_blur_sensitive_data(
-        self, image_detection_path: str, image_file_name: pathlib.Path
+        self, image_detection_path: str, image_file_name: str
     ) -> int:
         for summary_str in self._yolo_result_summary():
             logger.info(summary_str)
@@ -54,8 +60,9 @@ class ModelResult:
             sensitive_bounding_boxes = self.boxes[sensitive_idxs].xyxy
             self.blur_inside_boxes(sensitive_bounding_boxes)
 
-        target_bounding_boxes = self.boxes[target_idxs].xyxy
-        self.draw_bounding_boxes(target_bounding_boxes)
+        if self.draw_boxes:
+            target_bounding_boxes = self.boxes[target_idxs].xyxy
+            self.draw_bounding_boxes(target_bounding_boxes)
 
         self.save_result(
             target_idxs, sensitive_idxs, image_detection_path, image_file_name
@@ -66,43 +73,57 @@ class ModelResult:
     def save_result(
         self, target_idxs, sensitive_idxs, image_detection_path, image_file_name
     ):
-        pathlib.Path(image_detection_path).mkdir(parents=True, exist_ok=True)
+        os.makedirs(image_detection_path, exist_ok=True)
+
         result_full_path = os.path.join(image_detection_path, image_file_name)
-        annotation_str = self._get_annotation_string_from_boxes(self.boxes[target_idxs])
-        annotation_path = os.path.join(
-            image_detection_path, f"{image_file_name.stem}.txt"
+
+        annotation_file_name = f"{os.path.splitext(image_file_name)[0]}.json"
+        annotation_path = os.path.join(image_detection_path, annotation_file_name)
+        annotation_json = self.frame_metadata.content()
+        annotation_json["detections"] = self._get_annotation_dicts_from_boxes(
+            self.boxes[target_idxs]
         )
+
         logger.debug(f"Folder path: {image_detection_path}, {annotation_path}")
         cv2.imwrite(result_full_path, self.image)
         with open(annotation_path, "w") as f:
-            f.write(annotation_str)
+            json.dump(annotation_json, f)
 
         if self.save_blurred_labels:
-            annotation_str = self._get_annotation_string_from_boxes(
+            annotation_json["detections"] = self._get_annotation_dicts_from_boxes(
                 self.boxes[sensitive_idxs]
             )
             annotation_path = os.path.join(
-                self.blurred_labels_folder, f"{image_file_name.stem}.txt"
+                self.blurred_labels_folder, annotation_file_name
             )
             logger.debug(f"Blurred labels path: {annotation_path}")
             with open(annotation_path, "w") as f:
-                f.write(annotation_str)
+                json.dump(annotation_json, f)
 
         logger.debug("Saved result from model.")
 
     @staticmethod
-    def _get_annotation_string_from_boxes(boxes: Boxes) -> str:
+    def _get_annotation_dicts_from_boxes(boxes: Boxes) -> List[dict]:
         boxes = boxes.cpu()
-        annotation_lines = []
+        annotation_dicts: List[dict] = []
 
         for box in boxes:
-            cls = int(box.cls.squeeze())
-            conf = float(box.conf.squeeze())
-            tracking_id = int(box.id.squeeze()) if box.is_track else -1
-            yolo_box_str = " ".join([f"{x:.6f}" for x in box.xywhn.squeeze()])
-            annotation_lines.append(f"{cls} {yolo_box_str} {conf:.6f} {tracking_id}")
+            (x, y, w, h) = (x for x in box.xywhn.squeeze())
+            annotation_dicts.append(
+                {
+                    "object_class": int(box.cls.squeeze()),
+                    "confidence": float(box.conf.squeeze()),
+                    "tracking_id": int(box.id.squeeze()) if box.is_track else -1,
+                    "boundingBox": {
+                        "x_center": x,
+                        "y_center": y,
+                        "width": w,
+                        "height": h,
+                    },
+                }
+            )
 
-        return "\n".join(annotation_lines)
+        return annotation_dicts
 
     def _yolo_result_summary(self) -> List[str]:
         """Returns a readable summary of the results.

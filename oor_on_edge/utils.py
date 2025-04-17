@@ -1,28 +1,24 @@
-import csv
 import logging
 import os
 import pathlib
-import re
 import shutil
 import time
 from functools import wraps
-from typing import List
 
 logger = logging.getLogger(__name__)
 
 
-def get_frame_metadata_csv_file_paths(root_folder):
-    csvs = []
-    for foldername, subfolders, filenames in os.walk(root_folder):
+def get_frame_metadata_file_paths(root_folder: str, file_type: str = ".json"):
+    """
+    List all files with a given file_type (default: .json) in root_folder recursively.
+    """
+    files = []
+    for foldername, _, filenames in os.walk(root_folder):
         for filename in filenames:
-            if (
-                filename.endswith("csv")
-                and filename != "runs.csv"
-                and filename != "system_metrics.csv"
-            ):
+            if filename.endswith(file_type):
                 filepath = os.path.join(foldername, filename)
-                csvs.append(filepath)
-    return csvs
+                files.append(filepath)
+    return sorted(files)
 
 
 def count_files_in_folder_tree(root_folder: pathlib.Path, file_type: str):
@@ -45,22 +41,9 @@ def count_files_in_folder_tree(root_folder: pathlib.Path, file_type: str):
     count = 0
     for _, _, filenames in os.walk(root_folder):
         for filename in filenames:
-            if bool(re.search(r"[0-9]+-D.*\." + f"{file_type}", filename)):
+            if filename.endswith(file_type):
                 count += 1
     return count
-
-
-def get_img_name_from_csv_row(csv_path, row):
-    # OLD solution
-    # csv_path_split = csv_path.stem.split(sep="-", maxsplit=1)
-    # img_name = f"0-{csv_path_split[1]}-{row[1]}.jpg"
-
-    # NEW solution 11/11/2024
-    img_name = f"{csv_path.stem}-{row[1].zfill(5)}.jpg"
-
-    # Possible future solution
-    # img_name = row[-1]
-    return img_name
 
 
 def log_execution_time(func):
@@ -110,13 +93,3 @@ def delete_file(file_path):
     except Exception as e:
         logger.error(f"Failed to remove file '{file_path}': {str(e)}")
         raise Exception(f"Failed to remove file '{file_path}': {e}")
-
-
-def save_csv_file(file_path: str, data: List[List[str]]):
-    directory = os.path.dirname(file_path)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    with open(file_path, "w", newline="") as output_file:
-        csv_writer = csv.writer(output_file)
-        csv_writer.writerows(data)

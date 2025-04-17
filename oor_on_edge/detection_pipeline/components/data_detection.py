@@ -1,25 +1,22 @@
-import csv
 import logging
 import os
 import pathlib
 import time
 from datetime import datetime
-from typing import List
+from typing import Tuple
 
 import torch
 from ultralytics import YOLO
+from ultralytics.engine.results import Results
 
+from oor_on_edge import utils
 from oor_on_edge.detection_pipeline.components.input_image import InputImage
+from oor_on_edge.detection_pipeline.components.metadata import (
+    FrameMetadata,
+    MetadataAggregator,
+)
 from oor_on_edge.detection_pipeline.components.model_result import ModelResult
 from oor_on_edge.settings.settings import OOROnEdgeSettings
-from oor_on_edge.utils import (
-    copy_file,
-    delete_file,
-    get_frame_metadata_csv_file_paths,
-    get_img_name_from_csv_row,
-    log_execution_time,
-    move_file,
-)
 
 logger = logging.getLogger("detection_pipeline")
 
@@ -82,7 +79,7 @@ class DataDetection:
         self.skip_invalid_gps = detection_settings["skip_invalid_gps"]
         self.gps_accept_delay = float(detection_settings["acceptable_gps_delay"])
 
-        self.metadata_csv_file_paths_with_errors = []
+        self.metadata_file_paths_with_errors = []
 
         logger.info(f"Inference_params: {self.inference_params}")
         logger.info(f"Pretrained_model_path: {self.pretrained_model_path}")
@@ -125,101 +122,94 @@ class DataDetection:
             - deletes the raw images.
         """
         logger.debug(f"Running container detection pipeline on {self.images_folder}..")
-        metadata_csv_file_paths = get_frame_metadata_csv_file_paths(
+        metadata_file_paths = utils.get_frame_metadata_file_paths(
             root_folder=self.images_folder
         )
 
-        logger.info(f"Number of CSVs to detect: {len(metadata_csv_file_paths)}")
-        for metadata_csv_file_path in metadata_csv_file_paths:
-            self._detect_and_blur_step(metadata_csv_file_path=metadata_csv_file_path)
-            if self.training_mode:
-                self._move_data(metadata_csv_file_path=metadata_csv_file_path)
-            elif metadata_csv_file_path not in self.metadata_csv_file_paths_with_errors:
-                self._delete_data_step(metadata_csv_file_path=metadata_csv_file_path)
+        logger.info(
+            f"Number of metadata files in detection queue: {len(metadata_file_paths)}"
+        )
 
-    def _accept_gps(self, row: List[str]) -> bool:
+        self.image_processed_count = 0
+        self.target_objects_detected_count = 0
+
+        metadata_aggregator = MetadataAggregator(output_folder=self.detections_folder)
+
+        for metadata_file_path in metadata_file_paths:
+            frame_metadata = FrameMetadata(metadata_file_path)
+            success = self._process_metadata_file(frame_metadata=frame_metadata)
+            if success:
+                metadata_aggregator.append(frame_metadata=frame_metadata)
+
+                if self.training_mode:
+                    self._move_data(frame_metadata=frame_metadata)
+                else:
+                    self._delete_data_step(frame_metadata=frame_metadata)
+
+        logger.info(
+            f"Processed {self.image_processed_count} images and "
+            f"detected {self.target_objects_detected_count} target objects."
+        )
+
+        metadata_aggregator.save_and_reset()
+
+    def _accept_gps(self, frame_metadata: FrameMetadata) -> Tuple[bool, float]:
         """
         Check whether GPS signal is valid and has an acceptable delay.
         """
-        gps_valid = True
+        gps_valid = (not self.skip_invalid_gps) or frame_metadata.gps_is_valid()
         accept_delay = True
         gps_delay = float("nan")
 
-        if self.skip_invalid_gps:
-            gps_lat = float(row[12])
-            gps_long = float(row[13])
-            gps_valid = gps_lat != 0 and gps_long != 0
-
         if gps_valid and (self.gps_accept_delay != float("inf")):
-            frame_timestamp = datetime.fromtimestamp(float(row[2]))
-            gps_internal_timestamp = datetime.fromtimestamp(float(row[16]))
-            gps_delay = abs((frame_timestamp - gps_internal_timestamp).total_seconds())
+            gps_delay = frame_metadata.get_gps_delay()
             accept_delay = gps_delay <= self.gps_accept_delay
 
         return (gps_valid and accept_delay), gps_delay
 
-    @log_execution_time
-    def _detect_and_blur_step(self, metadata_csv_file_path):
+    @utils.log_execution_time
+    def _process_metadata_file(self, frame_metadata: FrameMetadata) -> bool:
         """
         Loops through each row of the metadata csv file, detects containers and blur each image.
 
         Parameters
         ----------
-        metadata_csv_file_path : str
-            Metadata csv file path.
+        metadata_file_path : str
+            Metadata file path.
         """
         try:
-            logger.debug(f"metadata_csv_file_path: {metadata_csv_file_path}")
-            (
-                csv_path,
-                _,
-                images_path,
-                detections_path,
-            ) = self._calculate_all_paths(metadata_csv_file_path)
+            metadata_file_path = frame_metadata.get_file_path()
+            logger.debug(f"metadata_file_path: {metadata_file_path}")
 
-            with open(metadata_csv_file_path) as frame_metadata_file:
-                reader = csv.reader(frame_metadata_file)
-                _ = next(reader)
-                processed_images_count = target_objects_detected_count = 0
-                for row in reader:
-                    image_file_name = pathlib.Path(
-                        get_img_name_from_csv_row(csv_path, row)
+            accept_gps, gps_delay = self._accept_gps(frame_metadata=frame_metadata)
+            if not accept_gps:
+                logger.debug(
+                    f"No valid GPS (delay={gps_delay:.1f}s), "
+                    f"skipping frame: {frame_metadata.get_image_filename()}"
+                )
+            else:
+                if os.path.isfile(frame_metadata.get_image_full_path()):
+                    self.target_objects_detected_count += self._detect_and_blur_image(
+                        frame_metadata=frame_metadata,
                     )
-                    accept_gps, gps_delay = self._accept_gps(row=row)
-                    if not accept_gps:
-                        logger.debug(
-                            f"No valid GPS (delay={gps_delay:.1f}s), skipping frame: {image_file_name}"
-                        )
-                        continue
-                    image_full_path = images_path / image_file_name
-                    if os.path.isfile(image_full_path):
-                        target_objects_detected_count += self._detect_and_blur_image(
-                            image_file_name,
-                            image_full_path,
-                            csv_path,
-                            detections_path,
-                        )
-                        processed_images_count += 1
-                    else:
-                        logger.debug(f"Image {image_full_path} not found, skipping.")
-            logger.debug(
-                f"Copying {csv_path} to {os.path.join(detections_path, csv_path.name)}"
-            )
-            copy_file(csv_path, os.path.join(detections_path, csv_path.name))
-            if metadata_csv_file_path in self.metadata_csv_file_paths_with_errors:
-                self.metadata_csv_file_paths_with_errors.remove(metadata_csv_file_path)
-            logger.info(
-                f"Processed {processed_images_count} images from {metadata_csv_file_path}, "
-                f"detected {target_objects_detected_count} containers."
-            )
+                    self.image_processed_count += 1
+                else:
+                    logger.debug(
+                        f"Image {frame_metadata.get_image_full_path()} not found, skipping."
+                    )
+
+            if metadata_file_path in self.metadata_file_paths_with_errors:
+                self.metadata_file_paths_with_errors.remove(metadata_file_path)
+            return True
         except Exception as e:
             logger.error(
-                f"Exception during the detection of: {metadata_csv_file_path}: {e}"
+                f"Exception during the detection of: {metadata_file_path}: {e}"
             )
-            self.metadata_csv_file_paths_with_errors.append(metadata_csv_file_path)
+            self.metadata_file_paths_with_errors.append(metadata_file_path)
+            return False
 
-    @log_execution_time
-    def _delete_data_step(self, metadata_csv_file_path):
+    @utils.log_execution_time
+    def _delete_data_step(self, frame_metadata: FrameMetadata):
         """
         Deletes the data that has been processed.
 
@@ -229,26 +219,11 @@ class DataDetection:
             Path of the CSV file containing the metadata of the pictures,
             it's used to keep track of which files needs to be deleted.
         """
-        csv_path = pathlib.Path(metadata_csv_file_path)
-        relative_path = csv_path.relative_to(self.images_folder)
-        images_path = self.images_folder / relative_path.parent
-        with open(metadata_csv_file_path) as frame_metadata_file:
-            images_deleted_count = 0
-            reader = csv.reader(frame_metadata_file)
-            _ = next(reader)
-            for idx, row in enumerate(reader):
-                image_file_name = get_img_name_from_csv_row(csv_path, row)
-                image_full_path = images_path / image_file_name
-                if os.path.isfile(image_full_path):
-                    delete_file(image_full_path)
-                    images_deleted_count += 1
-        delete_file(metadata_csv_file_path)
-        logger.info(
-            f"Deleted {images_deleted_count} images from {metadata_csv_file_path}"
-        )
+        utils.delete_file(frame_metadata.get_image_full_path())
+        utils.delete_file(frame_metadata.get_file_path())
 
-    @log_execution_time
-    def _move_data(self, metadata_csv_file_path):
+    @utils.log_execution_time
+    def _move_data(self, frame_metadata: FrameMetadata):
         """
         Moves the data that has been processed to a training folder.
 
@@ -258,42 +233,26 @@ class DataDetection:
             Path of the CSV file containing the metadata of the pictures,
             it's used to keep track of which files had to be detected.
         """
-        csv_path = pathlib.Path(metadata_csv_file_path)
-        relative_path = csv_path.relative_to(self.images_folder)
-        images_path = self.images_folder / relative_path.parent
-        with open(metadata_csv_file_path) as frame_metadata_file:
-            images_moved_count = 0
-            reader = csv.reader(frame_metadata_file)
-            _ = next(reader)
-            for idx, row in enumerate(reader):
-                image_file_name = get_img_name_from_csv_row(csv_path, row)
-                image_full_path = images_path / image_file_name
-                if os.path.isfile(image_full_path):
-                    image_subfolder_and_name = os.path.relpath(
-                        image_full_path, self.images_folder
-                    )
-                    image_destination_full_path = os.path.join(
-                        self.training_mode_destination_path,
-                        image_subfolder_and_name,
-                    )
-                    move_file(image_full_path, image_destination_full_path)
-                    images_moved_count += 1
-        metadata_csv_subfolder_and_name = os.path.relpath(csv_path, self.images_folder)
-        metadata_csv_destination_file_path = os.path.join(
-            self.training_mode_destination_path, metadata_csv_subfolder_and_name
-        )
-        move_file(csv_path, metadata_csv_destination_file_path)
-        logger.info(
-            f"Training mode on: Moved {images_moved_count} images from {metadata_csv_file_path}"
-        )
+        metadata_file_path = frame_metadata.get_file_path()
+        image_full_path = frame_metadata.get_image_full_path()
 
-    @log_execution_time
+        image_rel_path = os.path.relpath(image_full_path, self.images_folder)
+        image_destination_full_path = os.path.join(
+            self.training_mode_destination_path,
+            image_rel_path,
+        )
+        utils.move_file(image_full_path, image_destination_full_path)
+
+        metadata_rel_path = os.path.relpath(metadata_file_path, self.images_folder)
+        metadata_destination_file_path = os.path.join(
+            self.training_mode_destination_path, metadata_rel_path
+        )
+        utils.move_file(metadata_file_path, metadata_destination_file_path)
+
+    @utils.log_execution_time
     def _detect_and_blur_image(
         self,
-        image_file_name: pathlib.Path,
-        image_full_path: pathlib.Path,
-        csv_path: pathlib.Path,
-        detections_path: pathlib.Path,
+        frame_metadata: FrameMetadata,
     ):
         """Loads the image, resizes it, detects containers and blur sensitive data.
 
@@ -315,82 +274,48 @@ class DataDetection:
         int
             Count of detected target objects
         """
-        logger.debug(f"Detecting and blurring: {image_file_name}")
+        logger.debug(f"Detecting and blurring: {frame_metadata.get_image_filename()}")
 
-        image = InputImage(image_full_path=str(image_full_path))
+        image = InputImage(image_full_path=frame_metadata.get_image_full_path())
         if self.output_image_size:
             image.resize(output_image_size=self.output_image_size)
         if self.defisheye_flag:
             image.defisheye(defisheye_params=self.defisheye_params)
 
         self.inference_params["source"] = image.image
-        self.inference_params["name"] = csv_path.stem
-        detection_results = self.model(**self.inference_params)
+        detection_results = self.model(**self.inference_params)[0]
         torch.cuda.empty_cache()
 
         n_detections = self._process_detections_and_blur_image(
-            detection_results,
-            str(detections_path),
-            image_file_name,
+            model_results=detection_results,
+            frame_metadata=frame_metadata,
         )
         return n_detections
 
-    @log_execution_time
+    @utils.log_execution_time
     def _process_detections_and_blur_image(
         self,
-        model_results: List,
-        image_detection_path: str,
-        image_file_name: pathlib.Path,
+        model_results: Results,
+        frame_metadata: FrameMetadata,
     ) -> int:
-        n_detections = 0
-        for model_result in model_results:
-            model_result = ModelResult(
-                model_result,
-                target_classes=self.target_classes,
-                sensitive_classes=self.sensitive_classes,
-                target_classes_conf=self.target_classes_conf,
-                sensitive_classes_conf=self.sensitive_classes_conf,
-                blurred_labels_folder=self.blurred_labels_folder,
-                save_blurred_labels=self.save_blurred_labels,
-            )
-            n_detections += model_result.process_detections_and_blur_sensitive_data(
-                image_detection_path=image_detection_path,
-                image_file_name=image_file_name,
-            )
-        return n_detections
-
-    def _calculate_all_paths(self, metadata_csv_file_path):
-        """
-        Calculate all the folders where the data should be retrieved and stored.
-
-        Parameters
-        ----------
-        metadata_csv_file_path
-            CSV file containing the metadata of the pictures,
-            it's used to keep track of which files need to be delivered.
-
-        Returns
-        -------
-            csv_path
-                Path where the csv metadata file is stored. For example:
-                /detections/folder1/file1.csv
-            relative_path
-                Folder structure to the images folder, excluding the root. For example:
-                folder1/file1.csv
-            images_path
-                Path of images excluding the file. For example:
-                /detections/folder1
-            detections_path
-                Path of detections excluding the file. For example:
-                /detections/folder1
-        """
-        csv_path = pathlib.Path(metadata_csv_file_path)
-        relative_path = csv_path.relative_to(self.images_folder)
-        images_path = self.images_folder / relative_path.parent
-        detections_path = pathlib.Path(self.detections_folder) / relative_path.parent
-        return (
-            csv_path,
-            relative_path,
-            images_path,
-            detections_path,
+        detections_output_folder = os.path.join(
+            self.detections_folder,
+            frame_metadata.get_rel_folder(root=self.images_folder),
         )
+
+        model_result = ModelResult(
+            model_result=model_results,
+            frame_metadata=frame_metadata,
+            target_classes=self.target_classes,
+            sensitive_classes=self.sensitive_classes,
+            target_classes_conf=self.target_classes_conf,
+            sensitive_classes_conf=self.sensitive_classes_conf,
+            blurred_labels_folder=self.blurred_labels_folder,
+            save_blurred_labels=self.save_blurred_labels,
+        )
+        n_detections = model_result.process_detections_and_blur_sensitive_data(
+            image_detection_path=detections_output_folder,
+            image_file_name=frame_metadata.get_image_filename(),
+        )
+
+        return n_detections
