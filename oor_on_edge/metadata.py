@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 
 class FrameMetadata:
@@ -38,6 +38,9 @@ class FrameMetadata:
             self.image_root_dir = image_root_dir
         else:
             self.image_root_dir = self.json_dir
+
+    def add_or_update_field(self, key: str, value: Any):
+        self.metadata[key] = value
 
     def content(self) -> dict:
         return self.metadata
@@ -118,3 +121,19 @@ class MetadataAggregator:
             json.dump(json_content, f)
 
         self.reset()
+
+
+def get_timestamp_from_metadata_file(metadata_file: str) -> datetime:
+    with open(metadata_file, "r") as f:
+        json_content = json.load(f)
+
+    if metadata_file.startswith("raw_metadata"):
+        return datetime.fromisoformat(json_content["timestamp_start"])
+    else:
+        return datetime.fromisoformat(json_content["image_file_timestamp"])
+
+
+def get_img_name_from_frame_metadata(metadata_file: str) -> str:
+    with open(metadata_file, "r") as f:
+        json_content = json.load(f)
+    return os.path.basename(json_content["image_file_name"])

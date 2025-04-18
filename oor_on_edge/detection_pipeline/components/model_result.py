@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 from ultralytics.engine.results import Boxes, Results
 
-from oor_on_edge.detection_pipeline.components.metadata import FrameMetadata
+from oor_on_edge.metadata import FrameMetadata
 
 logger = logging.getLogger("detection_pipeline")
 

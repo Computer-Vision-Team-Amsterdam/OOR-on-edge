@@ -11,11 +11,8 @@ from ultralytics.engine.results import Results
 
 from oor_on_edge import utils
 from oor_on_edge.detection_pipeline.components.input_image import InputImage
-from oor_on_edge.detection_pipeline.components.metadata import (
-    FrameMetadata,
-    MetadataAggregator,
-)
 from oor_on_edge.detection_pipeline.components.model_result import ModelResult
+from oor_on_edge.metadata import FrameMetadata, MetadataAggregator
 from oor_on_edge.settings.settings import OOROnEdgeSettings
 
 logger = logging.getLogger("detection_pipeline")
