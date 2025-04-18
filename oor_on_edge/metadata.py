@@ -90,8 +90,7 @@ class MetadataAggregator:
     def append(self, frame_metadata: FrameMetadata) -> None:
         if not self.timestamp_start:
             self.timestamp_start = frame_metadata.get_timestamp()
-        if not self.timestamp_end:
-            self.timestamp_end = frame_metadata.get_timestamp()
+        self.timestamp_end = frame_metadata.get_timestamp()
 
         self.frame_metadata_list.append(frame_metadata.content())
 
