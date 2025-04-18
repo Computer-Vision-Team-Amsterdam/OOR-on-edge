@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import pathlib
@@ -113,6 +114,22 @@ class DataDetection:
             raise FileNotFoundError(f"Model not found: {self.pretrained_model_path}")
         return YOLO(model=self.pretrained_model_path, task="detect")
 
+    def load_frame_metadata(self, metadata_file_path: str) -> Tuple[dict, dict]:
+        frame_metadata = FrameMetadata(
+            json_file=metadata_file_path, image_root_dir=self.input_folder
+        )
+        raw_frame_metadata = copy.deepcopy(frame_metadata)
+
+        frame_metadata.add_or_update_field("model_name", self.model_name)
+
+        settings = OOROnEdgeSettings.get_settings()
+        frame_metadata.add_or_update_field(
+            "project_version", settings["project_version"]
+        )
+        frame_metadata.add_or_update_field("customer", settings["customer"])
+
+        return frame_metadata, raw_frame_metadata
+
     def run_pipeline(self):
         """
         Runs the detection pipeline:
@@ -134,17 +151,18 @@ class DataDetection:
         self.image_processed_count = 0
         self.target_objects_detected_count = 0
 
-        metadata_aggregator = MetadataAggregator(
+        raw_metadata_aggregator = MetadataAggregator(
             output_folder=self.detections_output_folder
         )
 
         for metadata_file_path in metadata_file_paths:
-            frame_metadata = FrameMetadata(
-                json_file=metadata_file_path, image_root_dir=self.input_folder
+            frame_metadata, raw_frame_metadata = self.load_frame_metadata(
+                metadata_file_path
             )
+
             success = self._process_metadata_file(frame_metadata=frame_metadata)
             if success:
-                metadata_aggregator.append(frame_metadata=frame_metadata)
+                raw_metadata_aggregator.append(frame_metadata=raw_frame_metadata)
 
                 if self.training_mode:
                     self._move_data(frame_metadata=frame_metadata)
@@ -156,7 +174,7 @@ class DataDetection:
             f"detected {self.target_objects_detected_count} target objects."
         )
 
-        metadata_aggregator.save_and_reset()
+        raw_metadata_aggregator.save_and_reset()
 
     def _accept_gps(self, frame_metadata: FrameMetadata) -> Tuple[bool, float]:
         """
@@ -182,6 +200,7 @@ class DataDetection:
         metadata_file_path : str
             Metadata file path.
         """
+        success = False
         try:
             metadata_file_path = frame_metadata.get_file_path()
             logger.debug(f"metadata_file_path: {metadata_file_path}")
@@ -202,12 +221,12 @@ class DataDetection:
                     logger.debug(
                         f"Image {frame_metadata.get_image_full_path()} not found, skipping."
                     )
-            return True
+            success = True
         except Exception as e:
             logger.error(
                 f"Exception during the detection of: {metadata_file_path}: {e}"
             )
-            return False
+        return success
 
     @utils.log_execution_time
     def _delete_data_step(self, frame_metadata: FrameMetadata):

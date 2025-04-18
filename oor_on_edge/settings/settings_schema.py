@@ -15,10 +15,6 @@ class AzureIoTSpec(SettingsSpecModel):
 
 
 class DataDeliveryPipelineSpec(SettingsSpecModel):
-    detections_path: str
-    metadata_path: str
-    ml_model_id: str
-    project_version: str
     sleep_time: int
 
 
@@ -81,6 +77,7 @@ class OOROnEdgeSettingsSpec(SettingsSpecModel):
         extra = "forbid"
 
     customer: str
+    project_version: str
     azure_iot: AzureIoTSpec
     data_delivery_pipeline: DataDeliveryPipelineSpec
     detection_pipeline: DetectionPipelineSpec

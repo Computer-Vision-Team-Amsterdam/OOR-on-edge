@@ -1,4 +1,5 @@
-customer: ""
+customer: "THOR"
+project_version: "1.2.0"
 
 azure_iot:
   hostname: "iothub-oor-ont-weu-itr-01.azure-devices.net"
@@ -7,10 +8,6 @@ azure_iot:
   shared_access_key: "{SHARED_ACCESS_KEY_IOT}"
 
 data_delivery_pipeline:
-  detections_path: "/detections"
-  metadata_path: "/temp_metadata"
-  ml_model_id: "{ML_MODEL_ID}"
-  project_version: "{PROJECT_VERSION}"
   sleep_time: 30
 
 detection_pipeline:
