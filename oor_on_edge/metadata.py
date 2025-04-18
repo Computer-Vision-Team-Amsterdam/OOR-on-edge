@@ -126,7 +126,7 @@ def get_timestamp_from_metadata_file(metadata_file: str) -> datetime:
     with open(metadata_file, "r") as f:
         json_content = json.load(f)
 
-    if metadata_file.startswith("raw_metadata"):
+    if os.path.basename(metadata_file).startswith("raw_metadata"):
         return datetime.fromisoformat(json_content["timestamp_start"])
     else:
         return datetime.fromisoformat(json_content["image_file_timestamp"])

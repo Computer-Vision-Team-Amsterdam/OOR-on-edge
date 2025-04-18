@@ -45,10 +45,14 @@ class DataDelivery:
             root_folder=self.detections_folder
         )
         raw_metadata_file_paths = [
-            file for file in metadata_file_paths if file.startswith("raw_metadata")
+            file
+            for file in metadata_file_paths
+            if os.path.basename(file).startswith("raw_metadata")
         ]
         detection_metadata_file_paths = [
-            file for file in metadata_file_paths if not file.startswith("raw_metadata")
+            file
+            for file in metadata_file_paths
+            if not os.path.basename(file).startswith("raw_metadata")
         ]
 
         logger.info(
@@ -56,15 +60,25 @@ class DataDelivery:
             f"and {len(detection_metadata_file_paths)} detections."
         )
 
+        raw_metadata_success_count = 0
+        detection_metadata_success_count = 0
+
         for raw_metadata_file in raw_metadata_file_paths:
             success = self._deliver_raw_metadata(raw_metadata_file)
             if success:
                 delete_file(raw_metadata_file)
+                raw_metadata_success_count += 1
 
         for detection_metadata_file in detection_metadata_file_paths:
-            self._deliver_detection_data(detection_metadata_file)
+            success = self._deliver_detection_data(detection_metadata_file)
             if success:
                 self._delete_detection_data(detection_metadata_file)
+                detection_metadata_success_count += 1
+
+        logger.info(
+            f"Successfully delivered: {raw_metadata_success_count}/{len(raw_metadata_file_paths)} raw metadata files "
+            f"and {detection_metadata_success_count}/{len(detection_metadata_file_paths)} detections."
+        )
 
     @log_execution_time
     def _deliver_raw_metadata(self, raw_metadata_file_path: str) -> bool:

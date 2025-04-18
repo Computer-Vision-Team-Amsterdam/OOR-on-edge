@@ -170,7 +170,7 @@ class DataDetection:
                     self._delete_data_step(frame_metadata=frame_metadata)
 
         logger.info(
-            f"Processed {self.image_processed_count} images and "
+            f"Processed {self.image_processed_count}/{len(metadata_file_paths)} images and "
             f"detected {self.target_objects_detected_count} target objects."
         )
 

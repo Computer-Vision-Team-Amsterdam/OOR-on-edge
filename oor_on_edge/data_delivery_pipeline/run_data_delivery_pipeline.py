@@ -10,14 +10,12 @@ from oor_on_edge.settings.settings import OOROnEdgeSettings
 
 def main():
     settings = OOROnEdgeSettings.set_from_yaml("config.yml")
-    if not settings["data_delivery_pipeline"]["ml_model_id"].isdigit():
-        raise ValueError("Exception: ml_model_id is not an integer.")
     logging_file_path = f"{settings['logging']['luna_logs_dir']}/data_delivery_pipeline/{datetime.now().strftime('%y%m%d-%H%M%S')}.txt"
     setup_luna_logging(settings["logging"], logging_file_path)
     logger = logging.getLogger("data_delivery_pipeline")
     data_delivery_pipeline = DataDelivery()
     logger.info(
-        f"Running data delivery pipeline on {settings['data_delivery_pipeline']['detections_path']}.."
+        f"Running data delivery pipeline on {settings['detection_pipeline']['detections_output_path']}.."
     )
     while True:
         try:
