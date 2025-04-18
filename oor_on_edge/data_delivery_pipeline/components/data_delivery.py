@@ -1,17 +1,16 @@
-import csv
 import logging
 import os
-import pathlib
-from datetime import datetime
 
 from oor_on_edge.data_delivery_pipeline.components.iot_handler import IoTHandler
+from oor_on_edge.metadata import (
+    get_img_name_from_frame_metadata,
+    get_timestamp_from_metadata_file,
+)
 from oor_on_edge.settings.settings import OOROnEdgeSettings
 from oor_on_edge.utils import (
     delete_file,
-    get_frame_metadata_csv_file_paths,
-    get_img_name_from_csv_row,
+    get_frame_metadata_file_paths,
     log_execution_time,
-    save_csv_file,
 )
 
 logger = logging.getLogger("data_delivery_pipeline")
@@ -21,26 +20,10 @@ METADATA_N_FIELDS = 17  # The number of fields we want to preserve
 
 class DataDelivery:
     def __init__(self):
-        self.settings = OOROnEdgeSettings.get_settings()
-        self.detections_folder = self.settings["data_delivery_pipeline"][
-            "detections_path"
-        ]
-        self.metadata_folder = self.settings["data_delivery_pipeline"]["metadata_path"]
-        self.metadata_csv_file_paths_with_errors = []
-        self.model_and_code_version = [
-            self.settings["detection_pipeline"]["model_name"],
-            self.settings["data_delivery_pipeline"]["ml_model_id"],
-            self.settings["data_delivery_pipeline"]["project_version"],
-        ]
-        self.detection_metadata_header = [
-            "image_name",
-            "object_class",
-            "x_center",
-            "y_center",
-            "width",
-            "height",
-            "confidence",
-            "tracking_id",
+        settings = OOROnEdgeSettings.get_settings()
+        self.iot_settings = settings["azure_iot"]
+        self.detections_folder = settings["detection_pipeline"][
+            "detections_output_path"
         ]
 
     def run_pipeline(self):
@@ -51,17 +34,60 @@ class DataDelivery:
             - deletes the delivered data.
         """
         logger.debug(f"Running delivery pipeline on {self.detections_folder}..")
-        metadata_csv_file_paths = get_frame_metadata_csv_file_paths(
+
+        self.iot_handler = IoTHandler(
+            hostname=self.iot_settings["hostname"],
+            device_id=self.iot_settings["device_id"],
+            shared_access_key=self.iot_settings["shared_access_key"],
+        )
+
+        metadata_file_paths = get_frame_metadata_file_paths(
             root_folder=self.detections_folder
         )
-        logger.info(f"Number of CSVs to deliver: {len(metadata_csv_file_paths)}")
+        raw_metadata_file_paths = [
+            file for file in metadata_file_paths if file.startswith("raw_metadata")
+        ]
+        detection_metadata_file_paths = [
+            file for file in metadata_file_paths if not file.startswith("raw_metadata")
+        ]
 
-        for frame_metadata_file_path in metadata_csv_file_paths:
-            self._deliver_data(frame_metadata_file_path=frame_metadata_file_path)
-            self._delete_processed_data(metadata_csv_file_path=frame_metadata_file_path)
+        logger.info(
+            f"Number of files to deliver: {len(raw_metadata_file_paths)} raw metadata files "
+            f"and {len(detection_metadata_file_paths)} detections."
+        )
+
+        for raw_metadata_file in raw_metadata_file_paths:
+            success = self._deliver_raw_metadata(raw_metadata_file)
+            if success:
+                delete_file(raw_metadata_file)
+
+        for detection_metadata_file in detection_metadata_file_paths:
+            self._deliver_detection_data(detection_metadata_file)
+            if success:
+                self._delete_detection_data(detection_metadata_file)
 
     @log_execution_time
-    def _deliver_data(self, frame_metadata_file_path):
+    def _deliver_raw_metadata(self, raw_metadata_file_path: str) -> bool:
+        success = False
+        try:
+            timestamp = get_timestamp_from_metadata_file(raw_metadata_file_path)
+            upload_destination_path = f"full_frame_metadata/{timestamp.strftime('%Y-%m-%d')}/{os.path.basename(raw_metadata_file_path)}"
+            self.iot_handler.upload_file(
+                raw_metadata_file_path, upload_destination_path
+            )
+            success = True
+        except FileNotFoundError as e:
+            logger.error(
+                f"FileNotFoundError during the delivery of: {raw_metadata_file_path}: {e}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Exception during the delivery of: {raw_metadata_file_path}: {e}"
+            )
+        return success
+
+    @log_execution_time
+    def _deliver_detection_data(self, detection_metadata_file_path: str) -> bool:
         """
         Using Azure IoT delivers the images and metadata to Azure.
 
@@ -72,241 +98,37 @@ class DataDelivery:
             it's used to keep track of which files need to be delivered.
 
         """
-        iot_handler = IoTHandler(
-            hostname=self.settings["azure_iot"]["hostname"],
-            device_id=self.settings["azure_iot"]["device_id"],
-            shared_access_key=self.settings["azure_iot"]["shared_access_key"],
-        )
+        success = False
         try:
-            self._deliver_data_batch(frame_metadata_file_path, iot_handler)
-            if frame_metadata_file_path in self.metadata_csv_file_paths_with_errors:
-                self.metadata_csv_file_paths_with_errors.remove(
-                    frame_metadata_file_path
-                )
+            timestamp = get_timestamp_from_metadata_file(detection_metadata_file_path)
+            detection_upload_destination_path = f"detection_metadata/{timestamp.strftime('%Y-%m-%d')}/{os.path.basename(detection_metadata_file_path)}"
+            self.iot_handler.upload_file(
+                detection_metadata_file_path, detection_upload_destination_path
+            )
+
+            image_name = get_img_name_from_frame_metadata(detection_metadata_file_path)
+            image_full_path = os.path.join(
+                os.path.dirname(detection_metadata_file_path), image_name
+            )
+            image_upload_destination_path = f"images/{timestamp.strftime('%Y-%m-%d')}/{os.path.basename(image_name)}"
+            self.iot_handler.upload_file(image_full_path, image_upload_destination_path)
+
+            success = True
         except FileNotFoundError as e:
             logger.error(
-                f"FileNotFoundError during the delivery of: {frame_metadata_file_path}: {e}"
+                f"FileNotFoundError during the delivery of: {detection_metadata_file_path}: {e}"
             )
         except Exception as e:
             logger.error(
-                f"Exception during the delivery of: {frame_metadata_file_path}: {e}"
+                f"Exception during the delivery of: {detection_metadata_file_path}: {e}"
             )
-            self.metadata_csv_file_paths_with_errors.append(frame_metadata_file_path)
+        return success
 
-    @log_execution_time
-    def _deliver_data_batch(
-        self, frame_metadata_file_path: str, iot_handler: IoTHandler
-    ):
-        """
-        Delivers the data of a single frame metadata csv file.
-        This includes the frame metadata, the detections metadata and the images containing containers.
-
-        Returns
-        -------
-
-        """
-        (
-            csv_path,
-            _,
-            detections_path,
-            _,
-            file_path_only_filtered_rows,
-            file_path_detection_metadata,
-        ) = self._calculate_all_paths(metadata_csv_file_path=frame_metadata_file_path)
-
-        filtered_frame_metadata_rows = []
-        detection_metadata_rows = []
-
-        with open(frame_metadata_file_path) as frame_metadata_file:
-            reader = csv.reader(frame_metadata_file)
-            header = next(reader)
-            new_frame_metadata_header = (
-                ["image_name"]
-                + header
-                + ["model_name", "model_version", "code_version"]
-            )
-            filtered_frame_metadata_rows.append(new_frame_metadata_header)
-            detection_metadata_rows.append(self.detection_metadata_header)
-
-            images_delivered = 0
-            for row in reader:
-                image_file_name = get_img_name_from_csv_row(csv_path, row)
-                image_full_path = detections_path / image_file_name
-                detection_metadata_full_path = detections_path / pathlib.Path(
-                    f"{image_full_path.stem}.txt"
-                )
-                if os.path.isfile(image_full_path) and os.path.isfile(
-                    detection_metadata_full_path
-                ):
-                    row_detection_metadata_rows = (
-                        self._deliver_image_and_prepare_metadata(
-                            image_file_name,
-                            image_full_path,
-                            detection_metadata_full_path,
-                            iot_handler,
-                        )
-                    )
-                    detection_metadata_rows.extend(row_detection_metadata_rows)
-                    filtered_frame_metadata_rows.append(
-                        [image_file_name]
-                        + row[:METADATA_N_FIELDS]
-                        + self.model_and_code_version
-                    )
-                    images_delivered += 1
-
-            upload_destination_path = f"full_frame_metadata/{datetime.today().strftime('%Y-%m-%d')}/{os.path.basename(frame_metadata_file_path)}"
-            iot_handler.upload_file(
-                str(frame_metadata_file_path), str(upload_destination_path)
-            )
-
-            if images_delivered:
-                save_csv_file(
-                    file_path_only_filtered_rows, filtered_frame_metadata_rows
-                )
-                upload_destination_path = f"frame_metadata/{datetime.today().strftime('%Y-%m-%d')}/{os.path.basename(file_path_only_filtered_rows)}"
-                iot_handler.upload_file(
-                    str(file_path_only_filtered_rows), str(upload_destination_path)
-                )
-
-                save_csv_file(file_path_detection_metadata, detection_metadata_rows)
-                upload_destination_path = f"detection_metadata/{datetime.today().strftime('%Y-%m-%d')}/{os.path.basename(file_path_detection_metadata)}"
-                iot_handler.upload_file(
-                    str(file_path_detection_metadata), str(upload_destination_path)
-                )
-
-        logger.info(
-            f"From {frame_metadata_file_path} number of frames delivered: {images_delivered}"
+    def _delete_detection_data(self, detection_metadata_file_path: str) -> bool:
+        image_name = get_img_name_from_frame_metadata(detection_metadata_file_path)
+        image_full_path = os.path.join(
+            os.path.dirname(detection_metadata_file_path), image_name
         )
 
-    @staticmethod
-    @log_execution_time
-    def _deliver_image_and_prepare_metadata(
-        image_file_name, image_full_path, detection_metadata_full_path, iot_handler
-    ):
-        """
-        Delivers an image specified by row, and returns the metadata, this will be collected and sent all together
-        for all the images of the same metadata csv file.
-
-        Parameters
-        ----------
-        image_file_name:
-            Filename of the image.
-        image_file_name:
-            full path of the image.
-        detection_metadata_full_path:
-            full path where the detections are located.
-        iot_handler:
-            IoTHandler object to deliver the data.
-
-        Returns
-        -------
-        detection_metadata_rows
-            Detection metadata information.
-
-        """
-        detection_metadata_rows = []
-
-        with open(detection_metadata_full_path, "r") as detections_file:
-            for detection_metadata_row in csv.reader(detections_file, delimiter=" "):
-                detection_metadata_rows.append(
-                    [image_file_name] + detection_metadata_row
-                )
-
-        upload_destination_path = f"images/{datetime.today().strftime('%Y-%m-%d')}/{os.path.basename(image_full_path)}"
-        iot_handler.upload_file(str(image_full_path), str(upload_destination_path))
-        return detection_metadata_rows
-
-    @log_execution_time
-    def _delete_processed_data(self, metadata_csv_file_path):
-        """
-        Deletes the data that has been delivered to Azure.
-
-        Parameters
-        ----------
-        metadata_csv_file_paths
-            CSV files containing the metadata of the pictures,
-            it's used to keep track of which files need to be delivered.
-        """
-        if metadata_csv_file_path not in self.metadata_csv_file_paths_with_errors:
-            (
-                csv_path,
-                _,
-                detections_path,
-                _,
-                file_path_only_filtered_rows,
-                file_path_detection_metadata,
-            ) = self._calculate_all_paths(metadata_csv_file_path=metadata_csv_file_path)
-
-            with open(metadata_csv_file_path) as frame_metadata_file:
-                reader = csv.reader(frame_metadata_file)
-                _ = next(reader)
-                for idx, row in enumerate(reader):
-                    img_name = pathlib.Path(get_img_name_from_csv_row(csv_path, row))
-                    image_full_path = detections_path / img_name
-                    detection_metadata_full_path = detections_path / pathlib.Path(
-                        f"{img_name.stem}.txt"
-                    )
-                    if os.path.isfile(image_full_path):
-                        delete_file(image_full_path)
-                    if os.path.isfile(detection_metadata_full_path):
-                        delete_file(detection_metadata_full_path)
-
-            if os.path.isfile(file_path_only_filtered_rows):
-                delete_file(file_path_only_filtered_rows)
-            if os.path.isfile(file_path_detection_metadata):
-                delete_file(file_path_detection_metadata)
-            if os.path.isfile(metadata_csv_file_path):
-                delete_file(metadata_csv_file_path)
-
-    def _calculate_all_paths(self, metadata_csv_file_path):
-        """
-        Calculate all the folders where the data should be retrieved and stored.
-
-        Parameters
-        ----------
-        metadata_csv_file_path
-            CSV file containing the metadata of the pictures,
-            it's used to keep track of which files need to be delivered.
-
-        Returns
-        -------
-            csv_path
-                Path where the csv metadata file is stored. For example:
-                /detections/folder1/file1.csv
-            relative_path
-                Folder structure to the detections folder, excluding the root. For example:
-                folder1/file1.csv
-            detections_path
-                Path of detections excluding the file. For example:
-                /detections/folder1
-            path_only_filtered_rows
-                Path of the metadata rows where a container has been detected. For example:
-                /temp_metadata/folder1
-            file_path_only_filtered_rows
-                Path of the metadata rows where a container has been detected, including filename. For example:
-                /temp_metadata/folder1/file1.csv
-            file_path_detection_metadata
-                File path of the detection metadata rows where a container has been detected. For example:
-                /temp_metadata/folder1/file1-detections.csv
-        """
-        csv_path = pathlib.Path(metadata_csv_file_path)
-        relative_path = csv_path.relative_to(self.detections_folder)
-        detections_path = pathlib.Path(self.detections_folder) / relative_path.parent
-        path_only_filtered_rows = (
-            pathlib.Path(self.metadata_folder) / relative_path.parent
-        )
-        file_path_only_filtered_rows = os.path.join(
-            path_only_filtered_rows, csv_path.name
-        )
-        file_path_detection_metadata = os.path.join(
-            path_only_filtered_rows, f"{csv_path.stem}-detections.csv"
-        )
-
-        return (
-            csv_path,
-            relative_path,
-            detections_path,
-            path_only_filtered_rows,
-            file_path_only_filtered_rows,
-            file_path_detection_metadata,
-        )
+        delete_file(image_full_path)
+        delete_file(detection_metadata_file_path)

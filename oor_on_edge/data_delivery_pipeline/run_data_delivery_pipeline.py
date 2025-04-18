@@ -7,7 +7,8 @@ from oor_on_edge.data_delivery_pipeline.components.data_delivery import DataDeli
 from oor_on_edge.settings.luna_logging import setup_luna_logging
 from oor_on_edge.settings.settings import OOROnEdgeSettings
 
-if __name__ == "__main__":
+
+def main():
     settings = OOROnEdgeSettings.set_from_yaml("config.yml")
     if not settings["data_delivery_pipeline"]["ml_model_id"].isdigit():
         raise ValueError("Exception: ml_model_id is not an integer.")
@@ -27,3 +28,7 @@ if __name__ == "__main__":
             )
             logger.error(traceback.format_exc())
         time.sleep(settings["data_delivery_pipeline"]["sleep_time"])
+
+
+if __name__ == "__main__":
+    main()
