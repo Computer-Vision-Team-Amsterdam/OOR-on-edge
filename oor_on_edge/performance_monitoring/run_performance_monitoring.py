@@ -30,7 +30,7 @@ def internet(
 
 
 def main():
-    settings = OOROnEdgeSettings.set_from_yaml("config_local.yml")
+    settings = OOROnEdgeSettings.set_from_yaml("config.yml")
     logging_file_path = f"{settings['logging']['luna_logs_dir']}/performance_monitoring/{datetime.now().strftime('%y%m%d-%H%M%S')}.txt"
     setup_luna_logging(settings["logging"], logging_file_path)
     logger = logging.getLogger("performance_monitoring")
