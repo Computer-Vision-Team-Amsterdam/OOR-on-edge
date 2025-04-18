@@ -1,17 +1,43 @@
 import json
 import os
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 
 class FrameMetadata:
 
-    def __init__(self, json_file: str):
+    def __init__(self, json_file: str, image_root_dir: Optional[str]):
+        """
+        Create FrameMetadata from a given JSON file.
+
+        Parameters
+        ----------
+        json_file: str
+            The JSON metadata file. Is expected to contain at least:
+
+            {
+                "image_file_timestamp": timestamp,  # in iso format
+                "image_file_name": str,  # rel path to image w.r.t. image_root_dir
+                "gps_data": {
+                    "coordinate_time_stamp": timestamp,  # in iso format
+                    "latitude": float,
+                    "longitude": float
+                }
+            }
+
+        image_root_dir: Optional[str]
+            Root dir for image rel paths in JSOn metadata. If not set, the
+            folder of the JSON file will be used.
+        """
         with open(json_file, "r") as f:
             json_content = json.load(f)
         self.metadata = json_content
         self.file_path = json_file
-        self.base_path = os.path.dirname(json_file)
+        self.json_dir = os.path.dirname(json_file)
+        if image_root_dir:
+            self.image_root_dir = image_root_dir
+        else:
+            self.image_root_dir = self.json_dir
 
     def content(self) -> dict:
         return self.metadata
@@ -29,20 +55,27 @@ class FrameMetadata:
             and self.metadata["gps_data"]["longitude"] != 0
         )
 
+    def get_timestamp(self) -> datetime:
+        return datetime.fromisoformat(self.metadata["image_file_timestamp"])
+
     def get_image_filename(self) -> str:
-        return self.metadata["image_file_name"]
+        return os.path.basename(self.metadata["image_file_name"])
 
     def get_image_full_path(self) -> str:
-        return os.path.join(self.base_path, self.get_image_filename())
-
-    def get_base_path(self) -> str:
-        return self.base_path
+        return os.path.join(self.image_root_dir, self.metadata["image_file_name"])
 
     def get_file_path(self) -> str:
         return self.file_path
 
-    def get_rel_folder(self, root: str) -> str:
-        return os.path.relpath(self.base_path, root)
+    def get_image_rel_path(self, image_root: Optional[str] = None) -> str:
+        if not image_root:
+            image_root = self.image_root_dir
+        return os.path.relpath(self.get_image_full_path(), image_root)
+
+    def get_json_rel_path(self, json_root: Optional[str] = None) -> str:
+        if not json_root:
+            json_root = self.json_dir
+        return os.path.relpath(self.file_path, json_root)
 
 
 class MetadataAggregator:
@@ -52,20 +85,29 @@ class MetadataAggregator:
         self.reset()
 
     def append(self, frame_metadata: FrameMetadata) -> None:
+        if not self.timestamp_start:
+            self.timestamp_start = frame_metadata.get_timestamp()
+        if not self.timestamp_end:
+            self.timestamp_end = frame_metadata.get_timestamp()
+
         self.frame_metadata_list.append(frame_metadata.content())
 
     def reset(self):
         self.frame_metadata_list: List[dict] = []
-        self.timestamp = datetime.now()
+        self.timestamp_start = None
+        self.timestamp_end = None
 
     def save_and_reset(self) -> None:
         os.makedirs(self.output_folder, exist_ok=True)
         out_file = os.path.join(
             self.output_folder,
-            "raw_metadata_" + self.timestamp.strftime(format="%y%m%d_%H%M%S") + ".json",
+            "raw_metadata_"
+            + self.timestamp_start.strftime(format="%y%m%d_%H%M%S")
+            + ".json",
         )
         json_content = {
-            "timestamp": str(self.timestamp),
+            "timestamp_start": str(self.timestamp_start),
+            "timestamp_end": str(self.timestamp_end),
             "frames": self.frame_metadata_list,
         }
         with open(out_file, "w") as f:

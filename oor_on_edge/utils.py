@@ -4,16 +4,23 @@ import pathlib
 import shutil
 import time
 from functools import wraps
+from typing import List
 
 logger = logging.getLogger(__name__)
 
 
-def get_frame_metadata_file_paths(root_folder: str, file_type: str = ".json"):
+def get_frame_metadata_file_paths(
+    root_folder: str,
+    file_type: str = ".json",
+    ignore_folders: List[str] = ["processed"],
+):
     """
     List all files with a given file_type (default: .json) in root_folder recursively.
     """
     files = []
     for foldername, _, filenames in os.walk(root_folder):
+        if os.path.basename(foldername) in ignore_folders:
+            continue
         for filename in filenames:
             if filename.endswith(file_type):
                 filepath = os.path.join(foldername, filename)

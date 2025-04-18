@@ -30,8 +30,11 @@ class DataDetection:
         """
         detection_settings = OOROnEdgeSettings.get_settings()["detection_pipeline"]
 
-        self.images_folder = pathlib.Path(detection_settings["images_path"])
-        self.detections_folder = detection_settings["detections_path"]
+        self.input_folder = detection_settings["input_path"]
+        self.metadata_folder = os.path.join(
+            self.input_folder, detection_settings["metadata_rel_path"]
+        )
+        self.detections_output_folder = detection_settings["detections_output_path"]
 
         self.training_mode = detection_settings["training_mode"]
         self.training_mode_destination_path = pathlib.Path(
@@ -57,10 +60,9 @@ class DataDetection:
             "save_txt": inference_params.get("save_txt_flag", False),
             "save_conf": inference_params.get("save_conf_flag", False),
             "conf": inference_params.get("conf", 0.25),
-            "project": self.detections_folder,
         }
         self.model_name = detection_settings["model_name"]
-        self.pretrained_model_path = os.path.join(
+        self.pretrained_model_path: str = os.path.join(
             detection_settings["pretrained_model_path"], self.model_name
         )
         self.model = self._instantiate_model(detection_settings["sleep_time"])
@@ -79,15 +81,14 @@ class DataDetection:
         self.skip_invalid_gps = detection_settings["skip_invalid_gps"]
         self.gps_accept_delay = float(detection_settings["acceptable_gps_delay"])
 
-        self.metadata_file_paths_with_errors = []
-
         logger.info(f"Inference_params: {self.inference_params}")
         logger.info(f"Pretrained_model_path: {self.pretrained_model_path}")
         logger.info(f"Yolo model: {self.model_name}")
-        logger.info(f"Project_path: {self.detections_folder}")
+        logger.info(f"Project_path: {self.detections_output_folder}")
 
     def _instantiate_model(self, sleep_time: int):
-        """Checks if the model is available and creates the model object.
+        """
+        Checks if the model is available and creates the model object.
 
         Parameters
         ----------
@@ -118,12 +119,14 @@ class DataDetection:
         """
         Runs the detection pipeline:
             - find the images to detect;
-            - detects containers;
+            - detects objects of target class;
             - deletes the raw images.
         """
-        logger.debug(f"Running container detection pipeline on {self.images_folder}..")
+        logger.debug(
+            f"Running container detection pipeline on {self.metadata_folder}.."
+        )
         metadata_file_paths = utils.get_frame_metadata_file_paths(
-            root_folder=self.images_folder
+            root_folder=self.metadata_folder
         )
 
         logger.info(
@@ -133,10 +136,14 @@ class DataDetection:
         self.image_processed_count = 0
         self.target_objects_detected_count = 0
 
-        metadata_aggregator = MetadataAggregator(output_folder=self.detections_folder)
+        metadata_aggregator = MetadataAggregator(
+            output_folder=self.detections_output_folder
+        )
 
         for metadata_file_path in metadata_file_paths:
-            frame_metadata = FrameMetadata(metadata_file_path)
+            frame_metadata = FrameMetadata(
+                json_file=metadata_file_path, image_root_dir=self.input_folder
+            )
             success = self._process_metadata_file(frame_metadata=frame_metadata)
             if success:
                 metadata_aggregator.append(frame_metadata=frame_metadata)
@@ -197,15 +204,11 @@ class DataDetection:
                     logger.debug(
                         f"Image {frame_metadata.get_image_full_path()} not found, skipping."
                     )
-
-            if metadata_file_path in self.metadata_file_paths_with_errors:
-                self.metadata_file_paths_with_errors.remove(metadata_file_path)
             return True
         except Exception as e:
             logger.error(
                 f"Exception during the detection of: {metadata_file_path}: {e}"
             )
-            self.metadata_file_paths_with_errors.append(metadata_file_path)
             return False
 
     @utils.log_execution_time
@@ -233,21 +236,22 @@ class DataDetection:
             Path of the CSV file containing the metadata of the pictures,
             it's used to keep track of which files had to be detected.
         """
-        metadata_file_path = frame_metadata.get_file_path()
-        image_full_path = frame_metadata.get_image_full_path()
-
-        image_rel_path = os.path.relpath(image_full_path, self.images_folder)
+        image_rel_path = frame_metadata.get_image_rel_path()
         image_destination_full_path = os.path.join(
             self.training_mode_destination_path,
             image_rel_path,
         )
-        utils.move_file(image_full_path, image_destination_full_path)
+        utils.move_file(
+            frame_metadata.get_image_full_path(), image_destination_full_path
+        )
 
-        metadata_rel_path = os.path.relpath(metadata_file_path, self.images_folder)
+        metadata_rel_path = frame_metadata.get_json_rel_path(
+            json_root=self.input_folder
+        )
         metadata_destination_file_path = os.path.join(
             self.training_mode_destination_path, metadata_rel_path
         )
-        utils.move_file(metadata_file_path, metadata_destination_file_path)
+        utils.move_file(frame_metadata.get_file_path(), metadata_destination_file_path)
 
     @utils.log_execution_time
     def _detect_and_blur_image(
@@ -298,9 +302,11 @@ class DataDetection:
         model_results: Results,
         frame_metadata: FrameMetadata,
     ) -> int:
-        detections_output_folder = os.path.join(
-            self.detections_folder,
-            frame_metadata.get_rel_folder(root=self.images_folder),
+        detections_output_folder = os.path.dirname(
+            os.path.join(
+                self.detections_output_folder,
+                frame_metadata.get_image_rel_path(),
+            )
         )
 
         model_result = ModelResult(

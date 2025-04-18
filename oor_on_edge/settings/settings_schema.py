@@ -37,8 +37,9 @@ class DefisheyeParameters(SettingsSpecModel):
 
 
 class DetectionPipelineSpec(SettingsSpecModel):
-    images_path: str
-    detections_path: str
+    input_path: str
+    metadata_rel_path: str
+    detections_output_path: str
     model_name: str
     pretrained_model_path: str
     inference_params: InferenceModelParameters
@@ -46,7 +47,6 @@ class DetectionPipelineSpec(SettingsSpecModel):
     defisheye_params: DefisheyeParameters
     target_classes: List[int]
     sensitive_classes: List[int]
-    input_image_size: Tuple[int, int]
     output_image_size: Optional[Tuple[int, int]] = None
     target_classes_conf: Optional[float] = None
     sensitive_classes_conf: Optional[float] = None

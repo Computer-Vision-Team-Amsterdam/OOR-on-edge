@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import os
@@ -79,7 +80,7 @@ class ModelResult:
 
         annotation_file_name = f"{os.path.splitext(image_file_name)[0]}.json"
         annotation_path = os.path.join(image_detection_path, annotation_file_name)
-        annotation_json = self.frame_metadata.content()
+        annotation_json = copy.deepcopy(self.frame_metadata.content())
         annotation_json["detections"] = self._get_annotation_dicts_from_boxes(
             self.boxes[target_idxs]
         )
@@ -108,7 +109,7 @@ class ModelResult:
         annotation_dicts: List[dict] = []
 
         for box in boxes:
-            (x, y, w, h) = (x for x in box.xywhn.squeeze())
+            (x, y, w, h) = map(float, (x for x in box.xywhn.squeeze()))
             annotation_dicts.append(
                 {
                     "object_class": int(box.cls.squeeze()),
