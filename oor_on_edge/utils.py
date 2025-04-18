@@ -1,6 +1,5 @@
 import logging
 import os
-import pathlib
 import shutil
 import time
 from functools import wraps
@@ -18,17 +17,18 @@ def get_frame_metadata_file_paths(
     List all files with a given file_type (default: .json) in root_folder recursively.
     """
     files = []
-    for foldername, _, filenames in os.walk(root_folder):
-        if os.path.basename(foldername) in ignore_folders:
-            continue
+    for dirpath, dirnames, filenames in os.walk(root_folder, topdown=True):
+        dirnames[:] = [d for d in dirnames if d not in ignore_folders]
         for filename in filenames:
             if filename.endswith(file_type):
-                filepath = os.path.join(foldername, filename)
+                filepath = os.path.join(dirpath, filename)
                 files.append(filepath)
     return sorted(files)
 
 
-def count_files_in_folder_tree(root_folder: pathlib.Path, file_type: str):
+def count_files_in_folder_tree(
+    root_folder: str, file_type: str, ignore_folders: List[str] = []
+):
     """
     Counts how many files of a specific type are in a folder and all the subfolders.
     The type is for example: "csv", "jpeg", ...
@@ -46,7 +46,8 @@ def count_files_in_folder_tree(root_folder: pathlib.Path, file_type: str):
         Count of how many files
     """
     count = 0
-    for _, _, filenames in os.walk(root_folder):
+    for _, dirnames, filenames in os.walk(root_folder, topdown=True):
+        dirnames[:] = [d for d in dirnames if d not in ignore_folders]
         for filename in filenames:
             if filename.endswith(file_type):
                 count += 1
