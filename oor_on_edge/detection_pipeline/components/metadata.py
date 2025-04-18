@@ -98,6 +98,10 @@ class MetadataAggregator:
         self.timestamp_end = None
 
     def save_and_reset(self) -> None:
+        if len(self.frame_metadata_list) == 0:
+            self.reset()
+            return
+
         os.makedirs(self.output_folder, exist_ok=True)
         out_file = os.path.join(
             self.output_folder,
