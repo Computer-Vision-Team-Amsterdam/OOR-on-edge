@@ -78,6 +78,7 @@ class DataDetection:
             if detection_settings["sensitive_classes_conf"]
             else self.inference_params["conf"]
         )
+        self.draw_bounding_boxes = detection_settings["draw_bounding_boxes"]
         self.skip_invalid_gps = detection_settings["skip_invalid_gps"]
         self.gps_accept_delay = float(detection_settings["acceptable_gps_delay"])
 
@@ -318,6 +319,7 @@ class DataDetection:
             sensitive_classes_conf=self.sensitive_classes_conf,
             blurred_labels_folder=self.blurred_labels_folder,
             save_blurred_labels=self.save_blurred_labels,
+            draw_boxes=self.draw_bounding_boxes,
         )
         n_detections = model_result.process_detections_and_blur_sensitive_data(
             image_detection_path=detections_output_folder,
