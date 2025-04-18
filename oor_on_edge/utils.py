@@ -12,7 +12,7 @@ def get_frame_metadata_file_paths(
     root_folder: str,
     file_type: str = ".json",
     ignore_folders: List[str] = ["processed"],
-):
+) -> List[str]:
     """
     List all files with a given file_type (default: .json) in root_folder recursively.
     """
@@ -28,7 +28,7 @@ def get_frame_metadata_file_paths(
 
 def count_files_in_folder_tree(
     root_folder: str, file_type: str, ignore_folders: List[str] = []
-):
+) -> int:
     """
     Counts how many files of a specific type are in a folder and all the subfolders.
     The type is for example: "csv", "jpeg", ...
