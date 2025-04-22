@@ -325,6 +325,7 @@ class DataDetection:
                 frame_metadata.get_image_rel_path(),
             )
         )
+        output_image_file_name = frame_metadata.get_image_filename()
 
         model_result = ModelResult(
             model_result=model_results,
@@ -339,7 +340,7 @@ class DataDetection:
         )
         n_detections = model_result.process_detections_and_blur_sensitive_data(
             image_detection_path=detections_output_folder,
-            image_file_name=frame_metadata.get_image_filename(),
+            image_file_name=output_image_file_name,
         )
 
         return n_detections

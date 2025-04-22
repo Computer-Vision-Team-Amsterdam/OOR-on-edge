@@ -6,6 +6,9 @@ from typing import Any, List, Optional
 
 class FrameMetadata:
 
+    IMAGE_FILE_NAME_KEY = "image_file_name"
+    DETECTIONS_KEY = "detections"
+
     def __init__(self, json_file: str, image_root_dir: Optional[str]):
         """
         Create FrameMetadata from a given JSON file.
@@ -62,10 +65,12 @@ class FrameMetadata:
         return datetime.fromisoformat(self.metadata["image_file_timestamp"])
 
     def get_image_filename(self) -> str:
-        return os.path.basename(self.metadata["image_file_name"])
+        return os.path.basename(self.metadata[self.IMAGE_FILE_NAME_KEY])
 
     def get_image_full_path(self) -> str:
-        return os.path.join(self.image_root_dir, self.metadata["image_file_name"])
+        return os.path.join(
+            self.image_root_dir, self.metadata[self.IMAGE_FILE_NAME_KEY]
+        )
 
     def get_file_path(self) -> str:
         return self.file_path

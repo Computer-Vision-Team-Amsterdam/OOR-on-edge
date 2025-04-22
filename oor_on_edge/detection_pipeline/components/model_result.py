@@ -81,9 +81,10 @@ class ModelResult:
         annotation_file_name = f"{os.path.splitext(image_file_name)[0]}.json"
         annotation_path = os.path.join(image_detection_path, annotation_file_name)
         annotation_json = copy.deepcopy(self.frame_metadata.content())
-        annotation_json["detections"] = self._get_annotation_dicts_from_boxes(
-            self.boxes[target_idxs]
+        annotation_json[FrameMetadata.DETECTIONS_KEY] = (
+            self._get_annotation_dicts_from_boxes(self.boxes[target_idxs])
         )
+        annotation_json[FrameMetadata.IMAGE_FILE_NAME_KEY] = image_file_name
 
         logger.debug(f"Folder path: {image_detection_path}, {annotation_path}")
         cv2.imwrite(result_full_path, self.image)
@@ -91,8 +92,8 @@ class ModelResult:
             json.dump(annotation_json, f)
 
         if self.save_blurred_labels:
-            annotation_json["detections"] = self._get_annotation_dicts_from_boxes(
-                self.boxes[sensitive_idxs]
+            annotation_json[FrameMetadata.DETECTIONS_KEY] = (
+                self._get_annotation_dicts_from_boxes(self.boxes[sensitive_idxs])
             )
             annotation_path = os.path.join(
                 self.blurred_labels_folder, annotation_file_name
