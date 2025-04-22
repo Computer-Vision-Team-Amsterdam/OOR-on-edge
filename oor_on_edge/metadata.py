@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
 
 class FrameMetadata:
@@ -42,8 +42,13 @@ class FrameMetadata:
         else:
             self.image_root_dir = self.json_dir
 
-    def add_or_update_field(self, key: str, value: Any):
-        self.metadata[key] = value
+    def add_or_update_field(self, key: Union[str, List[str]], value: Any):
+        if isinstance(key, str):
+            key = [key]
+        dic: dict = self.metadata
+        for k in key[:-1]:
+            dic = dic.setdefault(k, {})
+        dic[key[-1]] = value
 
     def content(self) -> dict:
         return self.metadata
@@ -88,6 +93,10 @@ class FrameMetadata:
 
 class MetadataAggregator:
 
+    frame_metadata_list: List[dict]
+    timestamp_start: Optional[datetime]
+    timestamp_end: Optional[datetime]
+
     def __init__(self, output_folder: str):
         self.output_folder = output_folder
         self.reset()
@@ -100,7 +109,7 @@ class MetadataAggregator:
         self.frame_metadata_list.append(frame_metadata.content())
 
     def reset(self):
-        self.frame_metadata_list: List[dict] = []
+        self.frame_metadata_list = []
         self.timestamp_start = None
         self.timestamp_end = None
 
@@ -112,9 +121,7 @@ class MetadataAggregator:
         os.makedirs(self.output_folder, exist_ok=True)
         out_file = os.path.join(
             self.output_folder,
-            "raw_metadata_"
-            + self.timestamp_start.strftime(format="%y%m%d_%H%M%S")
-            + ".json",
+            "raw_metadata_" + self.timestamp_start.strftime("%y%m%d_%H%M%S") + ".json",
         )
         json_content = {
             "timestamp_start": str(self.timestamp_start),

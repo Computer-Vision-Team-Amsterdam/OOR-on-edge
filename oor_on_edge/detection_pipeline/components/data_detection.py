@@ -114,22 +114,24 @@ class DataDetection:
             raise FileNotFoundError(f"Model not found: {self.pretrained_model_path}")
         return YOLO(model=self.pretrained_model_path, task="detect")
 
-    def load_frame_metadata(self, metadata_file_path: str) -> Tuple[dict, dict]:
+    def load_frame_metadata(
+        self, metadata_file_path: str
+    ) -> Tuple[FrameMetadata, FrameMetadata]:
         frame_metadata = FrameMetadata(
             json_file=metadata_file_path, image_root_dir=self.input_folder
         )
         raw_frame_metadata = copy.deepcopy(frame_metadata)
 
-        frame_metadata.add_or_update_field("model_name", self.model_name)
-
         settings = OOROnEdgeSettings.get_settings()
         frame_metadata.add_or_update_field(
-            "aml_model_version", settings["aml_model_version"]
+            "project",
+            {
+                "model_name": self.model_name,
+                "aml_model_version": settings["aml_model_version"],
+                "project_version": settings["project_version"],
+                "customer": settings["customer"],
+            },
         )
-        frame_metadata.add_or_update_field(
-            "project_version", settings["project_version"]
-        )
-        frame_metadata.add_or_update_field("customer", settings["customer"])
 
         return frame_metadata, raw_frame_metadata
 
