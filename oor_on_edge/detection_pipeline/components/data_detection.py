@@ -124,6 +124,9 @@ class DataDetection:
 
         settings = OOROnEdgeSettings.get_settings()
         frame_metadata.add_or_update_field(
+            "aml_model_version", settings["aml_model_version"]
+        )
+        frame_metadata.add_or_update_field(
             "project_version", settings["project_version"]
         )
         frame_metadata.add_or_update_field("customer", settings["customer"])

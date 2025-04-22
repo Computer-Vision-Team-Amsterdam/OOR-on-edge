@@ -1,5 +1,7 @@
 customer: "THOR"
 project_version: "1.2.0"
+aml_model_name: OOR-model
+aml_model_version: 2
 
 azure_iot:
   hostname: "iothub-oor-ont-weu-itr-01.azure-devices.net"
