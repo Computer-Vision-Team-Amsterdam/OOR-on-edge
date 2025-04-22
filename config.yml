@@ -4,8 +4,7 @@ aml_model_name: OOR-model
 aml_model_version: 2
 
 azure_iot:
-  hostname: "iothub-oor-ont-weu-itr-01.azure-devices.net"
-  # hostname: "iothub-oor-prd-weu-ggi-01.azure-devices.net"
+  hostname: "{HOSTNAME_IOT}"
   device_id: "Luna"
   shared_access_key: "{SHARED_ACCESS_KEY_IOT}"
 

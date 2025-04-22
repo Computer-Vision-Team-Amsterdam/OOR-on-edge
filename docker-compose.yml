@@ -1,0 +1,22 @@
+services:
+  oor-on-edge:
+    image: oor-on-edge
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    volumes:
+      - type: bind
+        source: 
+        target: /input
+      - type: bind
+        source: 
+        target: /model_artifacts
+      - type: bind
+        source: 
+        target: /detections
+      - type: bind
+        source: 
+        target: /cvt_logs
+      - type: bind
+        source: 
+        target: /training_mode
