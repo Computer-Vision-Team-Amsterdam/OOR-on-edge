@@ -38,6 +38,9 @@ dev = [
     "safety>=3.2.4",
 ]
 
+[tool.setuptools.packages.find]
+include=["oor_on_edge", "oor_on_edge.*"]
+
 [tool.isort]
 profile = "black"
 multi_line_output = 3
