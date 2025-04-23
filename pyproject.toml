@@ -1,0 +1,37 @@
+[project]
+name = "oor_on_edge"
+version = "1.0.2"
+
+[tool.poetry]
+name = "oor_on_edge"
+version = "1.0.2"
+description = "OOR on-edge is about on-edge recognition of objects from public space images."
+authors = [
+    "Sebastian Davrieux <s.davrieux@amsterdam.nl>",
+    "Diana Epureanu <d.epureanu@amsterdam.nl>",
+    "Andrea Lombardo <a.lombardo@amsterdam.nl>",
+    "Daan Bloembergen <d.bloembergen@amsterdam.nl>"
+]
+
+[tool.poetry.dependencies]
+python = "~3.8"
+aml_interface = { git = "https://github.com/Computer-Vision-Team-Amsterdam/AML-Interface.git",  tag = "v1.1.1" }
+azure-iot-device = {version = "^2.13.0", source = "PyPI"}
+numpy = {version = "^1.24.2", source = "PyPI"}
+cvtoolkit = { git = "https://github.com/Computer-Vision-Team-Amsterdam/CVToolkit.git",  tag = "v2.0.0" }
+ultralytics = {version = "^8.2.76", source = "PyPI"}
+opencv-python = {version = "^4.8.0.74", source = "PyPI"}
+
+[tool.poetry.group.dev.dependencies]
+pytest = {version = "^7.0.1", source = "PyPI" }
+pytest-cov = {version = "^4.0.0", source = "PyPI" }
+safety = {version = "^3.2.4", source = "PyPI"}
+pre-commit = {version = "^3.2.0", source = "PyPI"}
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
