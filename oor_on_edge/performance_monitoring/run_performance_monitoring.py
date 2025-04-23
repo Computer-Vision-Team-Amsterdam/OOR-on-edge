@@ -57,8 +57,8 @@ def main():
         )
         logger.info(
             f"folder_status: ["
-            f"JSONs in metadata folder: {count_files_in_folder_tree(metadata_folder, '.json', ["processed"])}, "
-            f"JPGs in input folder: {count_files_in_folder_tree(input_folder, '.jpg', ["screenshots"])}, "
+            f"JSONs in metadata folder: {count_files_in_folder_tree(metadata_folder, '.json', ['processed'])}, "
+            f"JPGs in input folder: {count_files_in_folder_tree(input_folder, '.jpg', ['screenshots', 'backup'])}, "
             f"JSONs in detections folder: {count_files_in_folder_tree(detections_output_folder, '.json')}, "
             f"JPGs in detections folder: {count_files_in_folder_tree(detections_output_folder, '.jpg')}"
             f"]"

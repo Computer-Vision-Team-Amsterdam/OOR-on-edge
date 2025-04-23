@@ -85,14 +85,15 @@ class DataDetection:
         logger.info(f"Yolo model: {self.model_name}")
         logger.info(f"Project_path: {self.detections_output_folder}")
 
-    def _instantiate_model(self, sleep_time: int):
+    def _instantiate_model(self, sleep_time: int) -> YOLO:
         """
         Checks if the model is available and creates the model object.
 
         Parameters
         ----------
         sleep_time : int
-            How long to wait if it's not available.
+            How long to wait for model conversion if the model is an .engine
+            file and is not available yet.
 
         Returns
         -------
@@ -114,31 +115,52 @@ class DataDetection:
             raise FileNotFoundError(f"Model not found: {self.pretrained_model_path}")
         return YOLO(model=self.pretrained_model_path, task="detect")
 
-    def load_frame_metadata(self, metadata_file_path: str) -> Tuple[dict, dict]:
+    def _load_frame_metadata(
+        self, metadata_file_path: str
+    ) -> Tuple[FrameMetadata, FrameMetadata]:
+        """
+        Load a frame metadata JSON file and return two copies:
+        - frame_metadata contains the raw metadata enriched with project info
+        - raw_metadata contains only the raw metadata for aggregation
+        """
         frame_metadata = FrameMetadata(
             json_file=metadata_file_path, image_root_dir=self.input_folder
         )
         raw_frame_metadata = copy.deepcopy(frame_metadata)
 
-        frame_metadata.add_or_update_field("model_name", self.model_name)
-
         settings = OOROnEdgeSettings.get_settings()
         frame_metadata.add_or_update_field(
-            "aml_model_version", settings["aml_model_version"]
+            "project",
+            {
+                "model_name": self.model_name,
+                "aml_model_version": settings["aml_model_version"],
+                "project_version": settings["project_version"],
+                "customer": settings["customer"],
+            },
         )
-        frame_metadata.add_or_update_field(
-            "project_version", settings["project_version"]
-        )
-        frame_metadata.add_or_update_field("customer", settings["customer"])
 
         return frame_metadata, raw_frame_metadata
+
+    def _accept_gps(self, frame_metadata: FrameMetadata) -> Tuple[bool, float]:
+        """
+        Check whether GPS signal is valid and has an acceptable delay.
+        """
+        gps_valid = (not self.skip_invalid_gps) or frame_metadata.gps_is_valid()
+        accept_delay = True
+        gps_delay = float("nan")
+
+        if gps_valid and (self.gps_accept_delay != float("inf")):
+            gps_delay = frame_metadata.get_gps_delay()
+            accept_delay = gps_delay <= self.gps_accept_delay
+
+        return (gps_valid and accept_delay), gps_delay
 
     def run_pipeline(self):
         """
         Runs the detection pipeline:
-            - find the images to detect;
-            - detects objects of target class;
-            - deletes the raw images.
+        1. find the images to detect;
+        1. detect objects of target class;
+        1. delete the raw images.
         """
         logger.debug(
             f"Running container detection pipeline on {self.metadata_folder}.."
@@ -159,7 +181,7 @@ class DataDetection:
         )
 
         for metadata_file_path in metadata_file_paths:
-            frame_metadata, raw_frame_metadata = self.load_frame_metadata(
+            frame_metadata, raw_frame_metadata = self._load_frame_metadata(
                 metadata_file_path
             )
 
@@ -179,29 +201,11 @@ class DataDetection:
 
         raw_metadata_aggregator.save_and_reset()
 
-    def _accept_gps(self, frame_metadata: FrameMetadata) -> Tuple[bool, float]:
-        """
-        Check whether GPS signal is valid and has an acceptable delay.
-        """
-        gps_valid = (not self.skip_invalid_gps) or frame_metadata.gps_is_valid()
-        accept_delay = True
-        gps_delay = float("nan")
-
-        if gps_valid and (self.gps_accept_delay != float("inf")):
-            gps_delay = frame_metadata.get_gps_delay()
-            accept_delay = gps_delay <= self.gps_accept_delay
-
-        return (gps_valid and accept_delay), gps_delay
-
     @utils.log_execution_time
     def _process_metadata_file(self, frame_metadata: FrameMetadata) -> bool:
         """
-        Loops through each row of the metadata csv file, detects containers and blur each image.
-
-        Parameters
-        ----------
-        metadata_file_path : str
-            Metadata file path.
+        Process the image corresponding to the given FrameMetadata file. Returns
+        a boolean indicating success.
         """
         success = False
         try:
@@ -232,71 +236,14 @@ class DataDetection:
         return success
 
     @utils.log_execution_time
-    def _delete_data_step(self, frame_metadata: FrameMetadata):
-        """
-        Deletes the data that has been processed.
-
-        Parameters
-        ----------
-        metadata_csv_file_path
-            Path of the CSV file containing the metadata of the pictures,
-            it's used to keep track of which files needs to be deleted.
-        """
-        utils.delete_file(frame_metadata.get_image_full_path())
-        utils.delete_file(frame_metadata.get_file_path())
-
-    @utils.log_execution_time
-    def _move_data(self, frame_metadata: FrameMetadata):
-        """
-        Moves the data that has been processed to a training folder.
-
-        Parameters
-        ----------
-        metadata_csv_file_path
-            Path of the CSV file containing the metadata of the pictures,
-            it's used to keep track of which files had to be detected.
-        """
-        image_rel_path = frame_metadata.get_image_rel_path()
-        image_destination_full_path = os.path.join(
-            self.training_mode_destination_path,
-            image_rel_path,
-        )
-        utils.move_file(
-            frame_metadata.get_image_full_path(), image_destination_full_path
-        )
-
-        metadata_rel_path = frame_metadata.get_json_rel_path(
-            json_root=self.input_folder
-        )
-        metadata_destination_file_path = os.path.join(
-            self.training_mode_destination_path, metadata_rel_path
-        )
-        utils.move_file(frame_metadata.get_file_path(), metadata_destination_file_path)
-
-    @utils.log_execution_time
     def _detect_and_blur_image(
         self,
         frame_metadata: FrameMetadata,
-    ):
-        """Loads the image, resizes it, detects containers and blur sensitive data.
-
-        Parameters
-        ----------
-        image_file_name : pathlib.Path
-            File name of the image
-        image_full_path : pathlib.Path
-            Path of the image
-        csv_path : pathlib.Path
-            Path where the csv metadata file is stored. For example:
-            /detections/folder1/file1.csv
-        detections_path : pathlib.Path
-            Path of detections excluding the file. For example:
-            /detections/folder1
-
-        Returns
-        -------
-        int
-            Count of detected target objects
+    ) -> int:
+        """
+        Load the image, optionally resize and de-fisheye the image, detect target
+        objects and blur sensitive data. Returns the number of target objects
+        detected in the image.
         """
         logger.debug(f"Detecting and blurring: {frame_metadata.get_image_filename()}")
 
@@ -322,6 +269,13 @@ class DataDetection:
         model_results: Results,
         frame_metadata: FrameMetadata,
     ) -> int:
+        """
+        Process the model results. If any target class objects are detected,
+        blur the image, optionally draw bounding boxes around target objects,
+        and save image and metadata in the detections output folder.
+
+        Returns the number of target objects detected in the image.
+        """
         detections_output_folder = os.path.dirname(
             os.path.join(
                 self.detections_output_folder,
@@ -347,3 +301,37 @@ class DataDetection:
         )
 
         return n_detections
+
+    @utils.log_execution_time
+    def _delete_data_step(self, frame_metadata: FrameMetadata):
+        """
+        Deletes the data given by the provided FrameMetadata:
+        - the corresponding image;
+        - the original metadata.
+        """
+        utils.delete_file(frame_metadata.get_image_full_path())
+        utils.delete_file(frame_metadata.get_file_path())
+
+    @utils.log_execution_time
+    def _move_data(self, frame_metadata: FrameMetadata):
+        """
+        Moves the data given by the provided FrameMetadata to the training_mode output folder:
+        - the corresponding image;
+        - the original metadata.
+        """
+        image_rel_path = frame_metadata.get_image_rel_path()
+        image_destination_full_path = os.path.join(
+            self.training_mode_destination_path,
+            image_rel_path,
+        )
+        utils.move_file(
+            frame_metadata.get_image_full_path(), image_destination_full_path
+        )
+
+        metadata_rel_path = frame_metadata.get_json_rel_path(
+            json_root=self.input_folder
+        )
+        metadata_destination_file_path = os.path.join(
+            self.training_mode_destination_path, metadata_rel_path
+        )
+        utils.move_file(frame_metadata.get_file_path(), metadata_destination_file_path)

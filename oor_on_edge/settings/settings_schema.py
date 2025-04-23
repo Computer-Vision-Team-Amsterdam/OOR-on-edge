@@ -78,6 +78,8 @@ class OOROnEdgeSettingsSpec(SettingsSpecModel):
 
     customer: str
     project_version: str
+    aml_model_name: str
+    aml_model_version: int
     azure_iot: AzureIoTSpec
     data_delivery_pipeline: DataDeliveryPipelineSpec
     detection_pipeline: DetectionPipelineSpec
