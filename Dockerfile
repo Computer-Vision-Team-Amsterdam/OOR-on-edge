@@ -1,7 +1,18 @@
+# We use the Ultralytics base image. The architecture can be swapped seamlessly,
+# choose any of the following. See also:
+# https://github.com/ultralytics/ultralytics/tree/main/docker
+
+## Default image with GPU support
+# FROM ultralytics/ultralytics
+
+## CPU only
+#FROM ultralytics/ultralytics:latest-cpu
+
+## JetPack5.1.2 on Jetson Xavier NX, AGX Xavier, AGX Orin, Orin Nano and Orin NX
 FROM ultralytics/ultralytics:latest-jetson-jetpack5
 
-ARG DEBIAN_FRONTEND=noninteractive
-ENV TZ="Europe/Amsterdam"
+## JetPack6.1 on Jetson AGX Orin, Orin NX and Orin Nano Series
+# FROM ultralytics/ultralytics:latest-jetson-jetpack6
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV TZ="Europe/Amsterdam"
