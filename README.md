@@ -1,76 +1,112 @@
 # OOR-on-edge
-This project is about on-edge recognition of objects from public space images.
+
+This repository provides code to run a YOLO object detection model on a mobile Jetson device. The code blurs sensitive data on-edge, and transfers only images with detections to the Azure IoT landing zone.
 
 
-## Installation
+## Installation on the Jetson device
 
-#### 1. Clone the code
+The easiest way is to run the code in a Docker container. Follow the [instructions on how to install the NVIDIA docker runtime](https://docs.ultralytics.com/guides/docker-quickstart/#setting-up-docker-with-nvidia-support) to allow the YOLO model to run on the GPU. Then,
+
+### 1. Clone the code
 
 ```bash
 git clone git@github.com:Computer-Vision-Team-Amsterdam/OOR-on-edge.git
 ```
 
-#### 2. Install Poetry
-If you don't have it yet, follow the instructions [here](https://python-poetry.org/docs/#installation) to install the package manager Poetry.
+### 2. Update parameters
 
+In the project folder (e.g. `OOR-on-edge`), make changes to the following files:
 
-#### 3. Init submodules
-You need to initialize the content of the submodules so git clones the latest version.
+1. Check the `Dockerfile` to make sure the right base image is chosen for your specific setup.
+1. Modify `config.yml` to set the parameters.
+1. Update `docker-compose.yml` to point to the right paths:
+
+    ```yaml
+    volumes:
+      - type: bind
+        source: # add path to input folder
+        target: /input
+      - type: bind
+        source: # add path to folder with YOLO weights .pt or .engine file
+        target: /model_artifacts
+      - type: bind
+        source: # path where detections will be stored temporarily
+        target: /detections
+      - type: bind
+        source: # path where logs will be stored
+        target: /cvt_logs
+      - type: bind
+        source: # path where a copy of all input data will be stored in case training_mode is activated in the config.yml
+        target: /training_mode
+    ```
+1. Create a file `.iot-env` with the IoT settings:
+
+    ```bash
+    HOSTNAME_IOT="XXX"
+    AI_INSTRUMENTATION_KEY="YYY"
+    SHARED_ACCESS_KEY_IOT="ZZZ"
+    ```
+
+### 3. Run the docker container
+
+Move to project folder, and build and run the docker container.
+
 ```bash
-git submodule update --init --recursive
+cd OOR-on-edge
+
+docker compose up -d
 ```
 
-#### 4. Install dependencies
-In the terminal, navigate to the project root (the folder containing `pyproject.toml`), then use Poetry to create a new virtual environment and install the dependencies.
+Check if everything is well by monitoring the logs:
 
 ```bash
-poetry install
-```
-    
-#### 5. Install pre-commit hooks
-The pre-commit hooks help to ensure that all committed code is valid and consistently formatted.
-
-```bash
-poetry run pre-commit install
+docker compose logs -f oor-on-edge
 ```
 
-### Manually upload docker image to device
-
-#### On the laptop:
-Install builder (if building on an AMD64 architecture):
+The container can be stopped with
 
 ```bash
-docker buildx install
-docker buildx create --name arm64-builder --platform linux/arm64
-docker buildx use arm64-builder
-docker pull multiarch/qemu-user-static
-docker run --rm --privileged multiarch/qemu-user-static:register --reset
+docker compose down
 ```
-```bash
-docker build . --platform linux/arm64 --pull --load -t {IMAGE_NAME} --build-arg ML_MODEL_ID_arg=ML_MODEL_ID --build-arg PROJECT_VERSION_arg=PROJECT_VERSION
-docker save -o {PATH}/oor-docker-image.tar {IMAGE_NAME}
-```
-Remember to replace with the correct values: ML_MODEL_ID, PROJECT_VERSION.
 
 
-On the device:
-The device needs to have NVIDIA Container Toolkit installed and docker configured to run with gpus.
-NVIDIA Container Toolkit:
+## Local installation for developing
+
+We use UV as package manager, which can be installed using any method mentioned on [the UV webpage](https://docs.astral.sh/uv/getting-started/installation/) if needed. For example:
+
 ```bash
-curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
-  && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-    sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-sudo apt-get update
-sudo apt-get install -y nvidia-container-toolkit
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
-Docker configuration:
+
+Clone the code and install dependencies:
+
 ```bash
-sudo nvidia-ctk runtime configure --runtime=docker
-sudo systemctl restart docker
+git clone git@github.com:Computer-Vision-Team-Amsterdam/OOR-on-edge.git
+
+cd OOR-on-edge
+
+# Create the environment locally in the folder .venv
+# Although the project supports python >= 3.8, <=3.12, the specific Jetson device might require python 3.10 (or even 3.8)
+uv venv --python 3.10 
+
+# Activate the environment
+source .venv/bin/activate 
+
+# Install dependencies
+uv pip install -r pyproject.toml --extra dev
 ```
+
+Install pre-commit hooks. The pre-commit hooks help to ensure that all committed code is valid and consistently formatted. We use UV to manage pre-commit as well.
+
 ```bash
-sudo docker load -i {TAR_IMAGE_PATH}
-sudo docker run -d --restart unless-stopped --mount type=bind,source={logs_path},target=/cvt_logs --mount type=bind,source={detections_path},target=/detections --mount type=bind,source={training_mode_output_path},target=/training_mode --mount type=bind,source={model_path},target=/model_artifacts --mount type=bind,source={input_path},target=/input -e SHARED_ACCESS_KEY_IOT={SHARED_ACCESS_KEY_IOT} -e AI_INSTRUMENTATION_KEY={AI_INSTRUMENTATION_KEY}  --gpus all --runtime nvidia acroorontweuitr01.azurecr.io/oor-model-arm64-v8
+uv tool install pre-commit --with pre-commit-uv --force-reinstall
+
+# Install pre-commit hooks
+uv run pre-commit install
+
+# Optional: update pre-commit hooks
+uv run pre-commit autoupdate
+
+# Run pre-commit hooks using
+uv run .git/hooks/pre-commit
 ```
-Remember to replace with the correct values: SHARED_ACCESS_KEY_IOT, AI_INSTRUMENTATION_KEY.
