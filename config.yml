@@ -34,7 +34,7 @@ detection_pipeline:
   output_image_size: [1280, 720]  # null means keep original size
   target_classes_conf: 0.7  # 'null' means conf is taken from inference_params
   sensitive_classes_conf: null  # 'null' means conf is taken from inference_params
-  draw_bounding_boxes: True  # Whether to draw bounding boxes of target class objects
+  draw_bounding_boxes: False  # Whether to draw bounding boxes of target class objects
   skip_invalid_gps: True  # Whether or not to skip invalid GPS values
   acceptable_gps_delay: 5  # Acceptable delay in seconds, on inf to allow any delay
   sleep_time: 30
