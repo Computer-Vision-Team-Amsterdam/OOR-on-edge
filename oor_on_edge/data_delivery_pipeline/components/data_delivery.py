@@ -15,11 +15,13 @@ from oor_on_edge.utils import (
 
 logger = logging.getLogger("data_delivery_pipeline")
 
-METADATA_N_FIELDS = 17  # The number of fields we want to preserve
-
 
 class DataDelivery:
     def __init__(self):
+        """
+        Pipeline that delivers detection images and metadata to the Azure IoT
+        landing zone.
+        """
         settings = OOROnEdgeSettings.get_settings()
         self.iot_settings = settings["azure_iot"]
         self.detections_folder = settings["detection_pipeline"][
@@ -29,9 +31,9 @@ class DataDelivery:
     def run_pipeline(self):
         """
         Runs the data delivery pipeline:
-            - retrieves all the csvs and images that need to be delivered;
-            - delivers the data to Azure;
-            - deletes the delivered data.
+        1. retrieve all the images and metadata that need to be delivered;
+        1. deliver the data to Azure;
+        1. delete the delivered data from the device.
         """
         logger.debug(f"Running delivery pipeline on {self.detections_folder}..")
 
@@ -82,6 +84,7 @@ class DataDelivery:
 
     @log_execution_time
     def _deliver_raw_metadata(self, raw_metadata_file_path: str) -> bool:
+        """Upload a raw_metadata file."""
         success = False
         try:
             timestamp = get_timestamp_from_metadata_file(raw_metadata_file_path)
@@ -102,16 +105,7 @@ class DataDelivery:
 
     @log_execution_time
     def _deliver_detection_data(self, detection_metadata_file_path: str) -> bool:
-        """
-        Using Azure IoT delivers the images and metadata to Azure.
-
-        Parameters
-        ----------
-        frame_metadata_file_paths
-            CSV files containing the metadata of the pictures,
-            it's used to keep track of which files need to be delivered.
-
-        """
+        """Upload detection metadata and corresponding image."""
         success = False
         try:
             timestamp = get_timestamp_from_metadata_file(detection_metadata_file_path)
@@ -138,7 +132,8 @@ class DataDelivery:
             )
         return success
 
-    def _delete_detection_data(self, detection_metadata_file_path: str) -> bool:
+    def _delete_detection_data(self, detection_metadata_file_path: str) -> None:
+        """Delete detection metadata and corresponding image."""
         image_name = get_img_name_from_frame_metadata(detection_metadata_file_path)
         image_full_path = os.path.join(
             os.path.dirname(detection_metadata_file_path), image_name

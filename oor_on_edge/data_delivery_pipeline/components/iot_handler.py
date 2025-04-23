@@ -1,6 +1,6 @@
 import logging
 from contextlib import contextmanager
-from typing import Dict
+from typing import Any, Dict, Tuple, Union
 
 from azure.core.exceptions import AzureError
 from azure.iot.device import IoTHubDeviceClient, Message
@@ -14,18 +14,18 @@ class IoTHandler:
         self,
         hostname: str,
         device_id: str,
-        shared_access_key: str = None,
+        shared_access_key: str,
     ):
         """
         Object that handles the connection with IoT and the delivery of messages and files.
 
         Parameters
         ----------
-        hostname
+        hostname: str
             Azure IoT hostname
-        device_id
+        device_id: str
             Device id of the device connecting
-        shared_access_key
+        shared_access_key: str
             Access key to authenticate
         """
         self.connection_string = (
@@ -60,7 +60,7 @@ class IoTHandler:
 
         Parameters
         ----------
-        message_content
+        message_content: str
             Content of the message.
         """
         message = Message(
@@ -75,10 +75,10 @@ class IoTHandler:
 
         Parameters
         ----------
-        file_source_path
+        file_source_path: str
             Path of the file to upload.
-        file_destination_path
-            Path of where to upload it.
+        file_destination_path: str
+            Destination path in the IoT landing zone.
         """
         with self._connect() as device_client:
             storage_info = device_client.get_storage_info_for_blob(
@@ -112,16 +112,22 @@ class IoTHandler:
                 )
 
     @staticmethod
-    def _store_blob(blob_info: Dict[str, str], file_name: str):
+    def _store_blob(
+        blob_info: Dict[str, str], file_name: str
+    ) -> Tuple[bool, Union[Exception, dict[str, Any]]]:
         """
         Stores file on a blob container.
 
         Parameters
         ----------
-        blob_info
+        blob_info: Dict[str, str]
             Dictionary containing: hostname, containername, blobname, and sastoken.
-        file_name
+        file_name: str
             Path of the file to store
+
+        Returns
+        -------
+        A tuple: (bool: True if successful, dict: result)
         """
         try:
             sas_url = "https://{}/{}/{}{}".format(
