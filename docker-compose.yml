@@ -1,9 +1,14 @@
 services:
   oor-on-edge:
-    image: oor-on-edge
+    container_name: oor-on-edge
+    image: oor-on-edge:latest
+    env_file:
+      - .iot-env
     build:
       context: .
       dockerfile: ./Dockerfile
+    runtime: nvidia
+    restart: unless-stopped
     volumes:
       - type: bind
         source: 
