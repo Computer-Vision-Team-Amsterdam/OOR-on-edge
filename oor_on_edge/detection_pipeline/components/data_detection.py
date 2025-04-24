@@ -123,12 +123,15 @@ class DataDetection:
         - frame_metadata contains the raw metadata enriched with project info
         - raw_metadata contains only the raw metadata for aggregation
         """
+        settings = OOROnEdgeSettings.get_settings()
+
         frame_metadata = FrameMetadata(
-            json_file=metadata_file_path, image_root_dir=self.input_folder
+            json_file=metadata_file_path,
+            input_path_on_host=settings["detection_pipeline"]["input_path_on_host"],
+            input_path_local=self.input_folder,
         )
         raw_frame_metadata = copy.deepcopy(frame_metadata)
 
-        settings = OOROnEdgeSettings.get_settings()
         frame_metadata.add_or_update_field(
             "project",
             {

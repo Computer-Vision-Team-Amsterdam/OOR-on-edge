@@ -7,9 +7,10 @@ from typing import Any, List, Optional, Union
 class FrameMetadata:
 
     IMAGE_FILE_NAME_KEY = "image_file_name"
+    IMAGE_PATH_KEY = "image_path"
     DETECTIONS_KEY = "detections"
 
-    def __init__(self, json_file: str, image_root_dir: Optional[str]):
+    def __init__(self, json_file: str, input_path_on_host: str, input_path_local: str):
         """
         Create FrameMetadata from a given JSON file.
 
@@ -28,19 +29,25 @@ class FrameMetadata:
                 }
             }
 
-        image_root_dir: Optional[str]
-            Root dir for image rel paths in JSON metadata. If not set, the
-            folder of the JSON file will be used.
+        input_path_on_host: str
+            This prefix path will be stripped from the image full path in the metadata and replaced by input_path_local.
+        input_path_local: str
+            Root dir for image paths in JSON metadata.
         """
         with open(json_file, "r") as f:
             json_content = json.load(f)
         self.metadata = json_content
         self.file_path = json_file
         self.json_dir = os.path.dirname(json_file)
-        if image_root_dir:
-            self.image_root_dir = image_root_dir
-        else:
-            self.image_root_dir = self.json_dir
+        self.image_root_dir = input_path_local
+
+        # Update image full path from host to local (e.g. within docker container)
+        self.metadata[self.IMAGE_PATH_KEY] = os.path.join(
+            self.image_root_dir,
+            os.path.relpath(
+                path=self.metadata[self.IMAGE_PATH_KEY], start=input_path_on_host
+            ),
+        )
 
     def add_or_update_field(self, key: Union[str, List[str]], value: Any):
         """
@@ -93,9 +100,7 @@ class FrameMetadata:
 
     def get_image_full_path(self) -> str:
         """Get image full path."""
-        return os.path.join(
-            self.image_root_dir, self.metadata[self.IMAGE_FILE_NAME_KEY]
-        )
+        return self.metadata[self.IMAGE_PATH_KEY]
 
     def get_file_path(self) -> str:
         """Get file path of original JSON metadata file."""

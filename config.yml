@@ -14,7 +14,8 @@ data_delivery_pipeline:
 
 detection_pipeline:
   input_path: "/input"
-  metadata_rel_path: "json_per_image"
+  input_path_on_host: "/home/jetson/velotech-data"  # Path on host so we can strip it from full paths in metadata
+  metadata_rel_path: "json_tasks"
   detections_output_path: "/detections"
   inference_params:
     img_size: 1280
