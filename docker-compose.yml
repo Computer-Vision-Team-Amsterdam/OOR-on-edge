@@ -2,6 +2,7 @@ name: OOR
 services:
   oor-on-edge:
     container_name: oor-on-edge
+    image: cvt/oor-on-edge
     build:
       context: .
       dockerfile: ./Dockerfile
