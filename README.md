@@ -49,12 +49,18 @@ In the project folder (e.g. `OOR-on-edge`), make changes to the following files:
 
 ### 3. Run the docker container
 
-Move to project folder, and build and run the docker container.
+Move to project folder, and then build and run the docker container using docker-compose. The first build may require pulling a fresh base image, so make sure you have a good internet connection for this step.
 
 ```bash
-cd OOR-on-edge
+# Use the --pull flag to force pulling a fresh base image
+docker compose build [--pull]
+```
 
-docker compose up -d
+To start the container, use `up`. The container is configured to restart automatically when the system reboots. 
+
+```bash
+# The optional --build flag ensures that the container is automatically re-created on code or config changes before running.
+docker compose up -d [--build]
 ```
 
 Check if everything is well by monitoring the logs:
@@ -63,7 +69,7 @@ Check if everything is well by monitoring the logs:
 docker compose logs -f oor-on-edge
 ```
 
-The container can be stopped with
+The container can be stopped with:
 
 ```bash
 docker compose down
