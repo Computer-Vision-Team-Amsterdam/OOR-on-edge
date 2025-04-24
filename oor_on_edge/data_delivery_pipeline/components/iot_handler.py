@@ -1,10 +1,11 @@
 import logging
+import mimetypes
 from contextlib import contextmanager
 from typing import Any, Dict, Tuple, Union
 
 from azure.core.exceptions import AzureError
 from azure.iot.device import IoTHubDeviceClient, Message
-from azure.storage.blob import BlobClient
+from azure.storage.blob import BlobClient, ContentSettings
 
 logger = logging.getLogger("data_delivery_pipeline")
 
@@ -145,7 +146,13 @@ class IoTHandler:
 
             with BlobClient.from_blob_url(sas_url) as blob_client:
                 with open(file_name, "rb") as f:
-                    result = blob_client.upload_blob(f, overwrite=True)
+                    guessed_type, guessed_encoding = mimetypes.guess_type(file_name)
+                    content_settings = ContentSettings(
+                        content_type=guessed_type, content_encoding=guessed_encoding
+                    )
+                    result = blob_client.upload_blob(
+                        f, overwrite=True, content_settings=content_settings
+                    )
                     return True, result
 
         except FileNotFoundError as ex:
