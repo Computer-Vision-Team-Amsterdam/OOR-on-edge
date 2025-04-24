@@ -146,7 +146,7 @@ class ModelResult:
         logger.debug(f"Output paths: {result_full_path}, {annotation_full_path}")
         cv2.imwrite(result_full_path, self.image)
         with open(annotation_full_path, "w") as f:
-            json.dump(annotation_json, f)
+            json.dump(annotation_json, f, indent=4)
 
         if self.save_blurred_labels:
             annotation_json[FrameMetadata.DETECTIONS_KEY] = (
@@ -157,7 +157,7 @@ class ModelResult:
             )
             logger.debug(f"Blurred labels path: {annotation_full_path}")
             with open(annotation_full_path, "w") as f:
-                json.dump(annotation_json, f)
+                json.dump(annotation_json, f, indent=4)
 
         logger.debug("Saved result from model.")
 

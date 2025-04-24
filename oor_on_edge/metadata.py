@@ -209,7 +209,7 @@ class MetadataAggregator:
             "frames": self.frame_metadata_list,
         }
         with open(out_file, "w") as f:
-            json.dump(json_content, f)
+            json.dump(json_content, f, indent=4)
 
         self.reset()
 
