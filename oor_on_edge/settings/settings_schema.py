@@ -2,6 +2,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel
 
+from oor_on_edge import __version__
+
 
 class SettingsSpecModel(BaseModel):
     class Config:
@@ -78,7 +80,7 @@ class OOROnEdgeSettingsSpec(SettingsSpecModel):
         extra = "forbid"
 
     customer: str
-    project_version: str
+    project_version: str = __version__
     aml_model_name: str
     aml_model_version: int
     azure_iot: AzureIoTSpec

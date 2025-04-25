@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oor_on_edge"
-version = "2.1.0"
+dynamic = ["version"]
 description = "OOR on-edge is about on-edge recognition of objects from public space images."
 authors = [
     {name = "Sebastian Davrieux", email = "s.davrieux@amsterdam.nl"},
@@ -37,6 +37,9 @@ dev = [
     "pytest-cov>=4.0.0",
     "safety>=3.2.4",
 ]
+
+[tool.setuptools.dynamic]
+version = {attr = "oor_on_edge.__version__"}
 
 [tool.setuptools.packages.find]
 include=["oor_on_edge", "oor_on_edge.*"]
