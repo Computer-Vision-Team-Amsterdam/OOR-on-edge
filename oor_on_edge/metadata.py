@@ -1,7 +1,10 @@
 import json
+import logging
 import os
 from datetime import datetime
 from typing import Any, List, Optional, Union
+
+logger = logging.getLogger(__name__)
 
 
 class FrameMetadata:
@@ -21,7 +24,8 @@ class FrameMetadata:
 
             {
                 "image_file_timestamp": timestamp,  # in iso format
-                "image_file_name": str,  # rel path to image w.r.t. image_root_dir
+                "image_file_name": str,  # filename of the image
+                "image_path": str,  # full path of the image file
                 "gps_data": {
                     "coordinate_time_stamp": timestamp,  # in iso format
                     "latitude": float,
@@ -128,8 +132,9 @@ class FrameMetadata:
 class MetadataAggregator:
 
     frame_metadata_list: List[dict]
-    timestamp_start: Optional[datetime]
-    timestamp_end: Optional[datetime]
+    data_path: str
+    timestamp_start: datetime
+    timestamp_end: datetime
 
     def __init__(self, output_folder: str):
         """
@@ -146,18 +151,34 @@ class MetadataAggregator:
         self.reset()
 
     def append(self, frame_metadata: FrameMetadata) -> None:
-        """Append a FrameMetadata instance to the aggregator."""
-        if not self.timestamp_start:
-            self.timestamp_start = frame_metadata.get_timestamp()
-        self.timestamp_end = frame_metadata.get_timestamp()
+        """
+        Append a FrameMetadata instance to the aggregator.
 
-        self.frame_metadata_list.append(frame_metadata.content())
+        If the image path (excluding file name) of the record does not match the
+        path of preceding images, the aggregated metadata will first be written
+        to a file and the aggregator will be reset. This is to ensure metadata
+        of different recording sessions is not mixed in one metadata file.
+        """
+        if self.data_path and self.data_path != os.path.dirname(
+            frame_metadata.get_image_full_path()
+        ):
+            self.save_and_reset()
+            self.append(frame_metadata=frame_metadata)
+        else:
+            if not self.timestamp_start:
+                self.timestamp_start = frame_metadata.get_timestamp()
+            if not self.data_path:
+                self.data_path = os.path.dirname(frame_metadata.get_image_full_path())
+            self.timestamp_end = frame_metadata.get_timestamp()
+
+            self.frame_metadata_list.append(frame_metadata.content())
 
     def reset(self):
         """Reset the aggregator to an empty state."""
         self.frame_metadata_list = []
         self.timestamp_start = None
         self.timestamp_end = None
+        self.data_path = None
 
     def save_and_reset(self) -> None:
         """
@@ -184,12 +205,15 @@ class MetadataAggregator:
         json_content = {
             "timestamp_start": str(self.timestamp_start),
             "timestamp_end": str(self.timestamp_end),
+            "data_path": self.data_path,
             "frames": self.frame_metadata_list,
         }
         with open(out_file, "w") as f:
             json.dump(json_content, f)
 
         self.reset()
+
+        logger.info(f"Aggregated metadata written to {out_file}")
 
 
 def get_timestamp_from_metadata_file(metadata_file: str) -> datetime:
