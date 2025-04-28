@@ -28,11 +28,12 @@ ENV PATH=/root/.local/bin:$PATH
 
 WORKDIR /usr/src
 
-COPY oor_on_edge oor_on_edge
-COPY config.yml config.yml
-COPY entrypoint.sh .
 COPY pyproject.toml .
 
 RUN uv pip install --system -r pyproject.toml
+
+COPY oor_on_edge oor_on_edge
+COPY config.yml config.yml
+COPY entrypoint.sh .
 
 ENTRYPOINT ["/bin/bash", "/usr/src/entrypoint.sh"]
