@@ -4,7 +4,7 @@
 *.csv
 *.json
 
-.iot-env
+.iot*env
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
