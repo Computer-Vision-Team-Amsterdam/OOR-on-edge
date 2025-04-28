@@ -19,7 +19,7 @@ In the project folder (e.g. `OOR-on-edge`), make changes to the following files:
 
 1. Check the `Dockerfile` to make sure the right base image is chosen for your specific setup.
 1. Modify `config.yml` to set the parameters.
-1. Update `docker-compose.yml` to point to the right paths:
+1. Update `docker-compose.yml` and `docker-compose-dev.yml` to point to the right paths. The former is the default compose file that typically points to the `PRD` environment, while the latter can be edited to include different settings fro `DEV` (see next bullet).
 
     ```yaml
     volumes:
@@ -39,7 +39,7 @@ In the project folder (e.g. `OOR-on-edge`), make changes to the following files:
         source: # path where a copy of all input data will be stored in case training_mode is activated in the config.yml
         target: /training_mode
     ```
-1. Create a file `.iot-env` with the IoT settings:
+1. Create two files `.iot-prd-env` and `.iot-dev-env` with the IoT settings for PRD and DEV:
 
     ```bash
     HOSTNAME_IOT="XXX"
@@ -51,28 +51,30 @@ In the project folder (e.g. `OOR-on-edge`), make changes to the following files:
 
 Move to project folder, and then build and run the docker container using docker-compose. The first build may require pulling a fresh base image, so make sure you have a good internet connection for this step.
 
+**Note**: to use the IoT `DEV` landingzone, specify the right compose file using `--file docker-compose-dev.yml`.
+
 ```bash
 # Use the --pull flag to force pulling a fresh base image
-docker compose build [--pull]
+docker compose [--file docker-compose-dev.yml] build [--pull]
 ```
 
 To start the container, use `up`. The container is configured to restart automatically when the system reboots. 
 
 ```bash
 # The optional --build flag ensures that the container is automatically re-created on code or config changes before running.
-docker compose up -d [--build]
+docker compose [--file docker-compose-dev.yml] up -d [--build]
 ```
 
 Check if everything is well by monitoring the logs:
 
 ```bash
-docker compose logs -f oor-on-edge
+docker compose [--file docker-compose-dev.yml] logs -f oor-on-edge
 ```
 
 The container can be stopped with:
 
 ```bash
-docker compose down
+docker compose [--file docker-compose-dev.yml] down
 ```
 
 

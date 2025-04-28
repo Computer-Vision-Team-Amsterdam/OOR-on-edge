@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: ./Dockerfile
     env_file:
-      - .iot-prd-env
+      - .iot-dev-env
     runtime: nvidia
     restart: unless-stopped
     volumes:
