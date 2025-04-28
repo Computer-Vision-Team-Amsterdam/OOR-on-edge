@@ -77,6 +77,23 @@ The container can be stopped with:
 docker compose [--file docker-compose-dev.yml] down
 ```
 
+### 4. Convience short-cut commands
+
+For convenience shortcut commands can be installed by adding the following to your `.bashrc` or `.zshrc`:
+
+```bash
+export CVT_WORK_DIR="/PATH/TO/OOR-on-edge"
+. "$CVT_WORK_DIR/oor-on-edge.sh"
+```
+
+Then you can use shortcuts from any working dir for interacting with the docker:
+
+```bash
+cvt_docker start [--dev]  # Starts PRD as default
+cvt_docker logs
+cvt_docker stop
+```
+
 
 ## Local installation for developing
 
