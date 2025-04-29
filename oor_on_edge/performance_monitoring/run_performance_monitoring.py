@@ -53,11 +53,11 @@ def main():
         ram_load = psutil.virtual_memory().percent
         cpu_load = psutil.cpu_percent()
         logger.info(
-            f"system_status: [internet: {internet(logger)}, cpu: {cpu_load}, ram: {ram_load}, gpu_device_name: {gpu_device_name}]"
+            f"system_status: [internet: {internet(logger)}, hostname: {os.uname().nodename}, cpu: {cpu_load}, ram: {ram_load}, gpu_device_name: {gpu_device_name}]"
         )
         logger.info(
             f"folder_status: ["
-            f"JSONs in metadata folder: {count_files_in_folder_tree(metadata_folder, '.json', ['processed'])}, "
+            f"JSONs in metadata folder: {count_files_in_folder_tree(metadata_folder, '.json', ['processed', 'quarantine'])}, "
             f"JPGs in input folder: {count_files_in_folder_tree(input_folder, '.jpg', ['screenshots', 'backup'])}, "
             f"JSONs in detections folder: {count_files_in_folder_tree(detections_output_folder, '.json')}, "
             f"JPGs in detections folder: {count_files_in_folder_tree(detections_output_folder, '.jpg')}"
