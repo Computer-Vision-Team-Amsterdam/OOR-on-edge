@@ -4,7 +4,7 @@ cvt_docker() {
     local current_env=""
 
     case "$2" in
-        --ont|-o|ont)
+        --dev|-d|dev)
             current_env="dev"
             ;;
         --prd|-p|prd)

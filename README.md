@@ -10,7 +10,7 @@ The easiest way is to run the code in a Docker container. Follow the [instructio
 ### 1. Clone the code
 
 ```bash
-git clone git@github.com:Computer-Vision-Team-Amsterdam/OOR-on-edge.git
+ git clone https://github.com/Computer-Vision-Team-Amsterdam/OOR-on-edge.git
 ```
 
 ### 2. Update parameters
