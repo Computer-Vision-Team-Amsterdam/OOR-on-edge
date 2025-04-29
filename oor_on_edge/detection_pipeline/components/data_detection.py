@@ -174,7 +174,7 @@ class DataDetection:
         )
         metadata_file_paths = utils.get_frame_metadata_file_paths(
             root_folder=self.metadata_folder,
-            ignore_folders=[["processed", "quarantine"]],
+            ignore_folders=["processed", "quarantine"],
         )
 
         logger.info(
@@ -202,8 +202,11 @@ class DataDetection:
                         self._move_data(frame_metadata=frame_metadata)
                     else:
                         self._delete_data_step(frame_metadata=frame_metadata)
-            except JSONDecodeError:
-                self._quarantine_data(frame_metadata=frame_metadata)
+            except JSONDecodeError as e:
+                logger.error(
+                    f"Exception during the detection of: {metadata_file_path}: {e}"
+                )
+                self._quarantine_data(frame_metadata_path=metadata_file_path)
 
         logger.info(
             f"Processed {self.image_processed_count}/{len(metadata_file_paths)} images and "
@@ -347,15 +350,16 @@ class DataDetection:
         )
         utils.move_file(frame_metadata.get_file_path(), metadata_destination_file_path)
 
-    def _quarantine_data(self, frame_metadata: FrameMetadata):
+    def _quarantine_data(self, frame_metadata_path: str):
         """
         Moves the data given by the provided FrameMetadata to the quarantine folder:
         - the original metadata.
         """
-        metadata_rel_path = frame_metadata.get_json_rel_path(
-            json_root=self.input_folder
+        metadata_rel_path = os.path.relpath(
+            path=frame_metadata_path,
+            start=self.metadata_folder,
         )
         metadata_destination_file_path = os.path.join(
             self.quarantine_output_folder, metadata_rel_path
         )
-        utils.move_file(frame_metadata.get_file_path(), metadata_destination_file_path)
+        utils.move_file(frame_metadata_path, metadata_destination_file_path)
