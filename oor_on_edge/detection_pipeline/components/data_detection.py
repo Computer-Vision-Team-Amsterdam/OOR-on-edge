@@ -4,6 +4,7 @@ import os
 import pathlib
 import time
 from datetime import datetime
+from json.decoder import JSONDecodeError
 from typing import Tuple
 
 import torch
@@ -31,6 +32,9 @@ class DataDetection:
         self.input_folder = detection_settings["input_path"]
         self.metadata_folder = os.path.join(
             self.input_folder, detection_settings["metadata_rel_path"]
+        )
+        self.quarantine_output_folder = os.path.join(
+            self.input_folder, detection_settings["quarantine_rel_path"]
         )
         self.detections_output_folder = detection_settings["detections_output_path"]
 
@@ -169,7 +173,8 @@ class DataDetection:
             f"Running container detection pipeline on {self.metadata_folder}.."
         )
         metadata_file_paths = utils.get_frame_metadata_file_paths(
-            root_folder=self.metadata_folder
+            root_folder=self.metadata_folder,
+            ignore_folders=[["processed", "quarantine"]],
         )
 
         logger.info(
@@ -184,18 +189,21 @@ class DataDetection:
         )
 
         for metadata_file_path in metadata_file_paths:
-            frame_metadata, raw_frame_metadata = self._load_frame_metadata(
-                metadata_file_path
-            )
+            try:
+                frame_metadata, raw_frame_metadata = self._load_frame_metadata(
+                    metadata_file_path
+                )
 
-            success = self._process_metadata_file(frame_metadata=frame_metadata)
-            if success:
-                raw_metadata_aggregator.append(frame_metadata=raw_frame_metadata)
+                success = self._process_metadata_file(frame_metadata=frame_metadata)
+                if success:
+                    raw_metadata_aggregator.append(frame_metadata=raw_frame_metadata)
 
-                if self.training_mode:
-                    self._move_data(frame_metadata=frame_metadata)
-                else:
-                    self._delete_data_step(frame_metadata=frame_metadata)
+                    if self.training_mode:
+                        self._move_data(frame_metadata=frame_metadata)
+                    else:
+                        self._delete_data_step(frame_metadata=frame_metadata)
+            except JSONDecodeError:
+                self._quarantine_data(frame_metadata=frame_metadata)
 
         logger.info(
             f"Processed {self.image_processed_count}/{len(metadata_file_paths)} images and "
@@ -336,5 +344,18 @@ class DataDetection:
         )
         metadata_destination_file_path = os.path.join(
             self.training_mode_destination_path, metadata_rel_path
+        )
+        utils.move_file(frame_metadata.get_file_path(), metadata_destination_file_path)
+
+    def _quarantine_data(self, frame_metadata: FrameMetadata):
+        """
+        Moves the data given by the provided FrameMetadata to the quarantine folder:
+        - the original metadata.
+        """
+        metadata_rel_path = frame_metadata.get_json_rel_path(
+            json_root=self.input_folder
+        )
+        metadata_destination_file_path = os.path.join(
+            self.quarantine_output_folder, metadata_rel_path
         )
         utils.move_file(frame_metadata.get_file_path(), metadata_destination_file_path)

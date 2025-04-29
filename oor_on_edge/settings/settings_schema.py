@@ -38,6 +38,7 @@ class DetectionPipelineSpec(SettingsSpecModel):
     input_path: str
     input_path_on_host: str
     metadata_rel_path: str
+    quarantine_rel_path: str
     detections_output_path: str
     model_name: str
     pretrained_model_path: str

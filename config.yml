@@ -14,6 +14,7 @@ detection_pipeline:
   input_path: "/input"
   input_path_on_host: "/home/jetson/velotech-data"  # Path on host so we can strip it from full paths in metadata
   metadata_rel_path: "json_tasks"
+  quarantine_rel_path: "json_tasks/quarantine"
   detections_output_path: "/detections"
   inference_params:
     img_size: 1280
