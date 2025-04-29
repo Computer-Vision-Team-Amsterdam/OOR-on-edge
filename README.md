@@ -77,7 +77,7 @@ The container can be stopped with:
 docker compose [--file docker-compose-dev.yml] down
 ```
 
-### 4. Convience short-cut commands
+### 4. Convenience short-cut commands
 
 For convenience shortcut commands can be installed by adding the following to your `.bashrc` or `.zshrc`:
 
@@ -90,8 +90,8 @@ Then you can use shortcuts from any working dir for interacting with the docker:
 
 ```bash
 cvt_docker start [--dev]  # Starts PRD as default
-cvt_docker logs
-cvt_docker stop
+cvt_docker logs [--dev]
+cvt_docker stop [--dev]
 ```
 
 
