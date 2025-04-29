@@ -6,6 +6,7 @@ from time import sleep
 
 import psutil
 import torch
+from requests import get
 
 from oor_on_edge.settings.luna_logging import setup_luna_logging
 from oor_on_edge.settings.settings import OOROnEdgeSettings
@@ -20,13 +21,23 @@ def internet(
     OpenPort: 53/tcp
     Service: domain (DNS/TCP)
     """
+    connected = False
+    ip = "-"
+
     try:
         socket.setdefaulttimeout(timeout)
         socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
-        return True
+        connected = True
     except socket.error as ex:
         logger.error(ex)
-        return False
+
+    if connected:
+        try:
+            ip = get("https://api.ipify.org", timeout=timeout).content.decode("utf8")
+        except ConnectionError as ex:
+            logger.error(ex)
+
+    return connected, ip
 
 
 def main():
@@ -52,8 +63,10 @@ def main():
         )
         ram_load = psutil.virtual_memory().percent
         cpu_load = psutil.cpu_percent()
+        internet_connected, ip = internet(logger)
+        internet_status = ip if internet_connected else "disconnected"
         logger.info(
-            f"system_status: [internet: {internet(logger)}, hostname: {os.uname().nodename}, cpu: {cpu_load}, ram: {ram_load}, gpu_device_name: {gpu_device_name}]"
+            f"system_status: [internet: {internet_status}, hostname: {os.uname().nodename}, cpu: {cpu_load}, ram: {ram_load}, gpu_device_name: {gpu_device_name}]"
         )
         logger.info(
             f"folder_status: ["
