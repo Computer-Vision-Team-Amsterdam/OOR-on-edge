@@ -32,8 +32,8 @@ class DataDelivery:
         """
         Runs the data delivery pipeline:
         1. retrieve all the images and metadata that need to be delivered;
-        1. deliver the data to Azure;
-        1. delete the delivered data from the device.
+        2. deliver the data to Azure;
+        3. delete the delivered data from the device.
         """
         logger.debug(f"Running delivery pipeline on {self.detections_folder}..")
 
