@@ -166,8 +166,8 @@ class DataDetection:
         """
         Runs the detection pipeline:
         1. find the images to detect;
-        1. detect objects of target class;
-        1. delete the raw images.
+        2. detect objects of target class;
+        3. delete the raw images.
         """
         logger.debug(
             f"Running container detection pipeline on {self.metadata_folder}.."
