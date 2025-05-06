@@ -1,10 +1,10 @@
 [project]
 name = "oor_on_edge"
-version = "1.0.2"
+version = "2.0.0"
 
 [tool.poetry]
 name = "oor_on_edge"
-version = "1.0.2"
+version = "2.0.0"
 description = "OOR on-edge is about on-edge recognition of objects from public space images."
 authors = [
     "Sebastian Davrieux <s.davrieux@amsterdam.nl>",

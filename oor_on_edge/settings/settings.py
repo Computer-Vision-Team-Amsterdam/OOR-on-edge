@@ -1,6 +1,7 @@
 from cvtoolkit.settings.settings_helper import GenericSettings, Settings
-from oor_on_edge.settings.settings_schema import OOROnEdgeSettingsSpec
 from pydantic import BaseModel
+
+from oor_on_edge.settings.settings_schema import OOROnEdgeSettingsSpec
 
 
 class OOROnEdgeSettings(Settings):  # type: ignore
