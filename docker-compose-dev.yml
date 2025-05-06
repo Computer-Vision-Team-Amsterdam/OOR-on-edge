@@ -1,0 +1,28 @@
+name: OOR
+services:
+  oor-on-edge:
+    container_name: oor-on-edge
+    image: cvt/oor-on-edge
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    env_file:
+      - .iot-dev-env
+    runtime: nvidia
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: 
+        target: /input
+      - type: bind
+        source: 
+        target: /model_artifacts
+      - type: bind
+        source: 
+        target: /detections
+      - type: bind
+        source: 
+        target: /cvt_logs
+      - type: bind
+        source: 
+        target: /training_mode
