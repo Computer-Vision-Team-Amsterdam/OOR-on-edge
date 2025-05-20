@@ -1,5 +1,6 @@
 import logging
 import os
+from json import JSONDecodeError
 
 from oor_on_edge.data_delivery_pipeline.components.iot_handler import IoTHandler
 from oor_on_edge.metadata import (
@@ -11,6 +12,7 @@ from oor_on_edge.utils import (
     delete_file,
     get_frame_metadata_file_paths,
     log_execution_time,
+    move_file,
 )
 
 logger = logging.getLogger("data_delivery_pipeline")
@@ -27,6 +29,10 @@ class DataDelivery:
         self.detections_folder = settings["detection_pipeline"][
             "detections_output_path"
         ]
+        self.quarantine_output_folder = os.path.join(
+            self.detections_folder,
+            "quarantine",
+        )
 
     def run_pipeline(self):
         """
@@ -44,7 +50,7 @@ class DataDelivery:
         )
 
         metadata_file_paths = get_frame_metadata_file_paths(
-            root_folder=self.detections_folder
+            root_folder=self.detections_folder, ignore_folders=["quarantine"]
         )
         raw_metadata_file_paths = [
             file
@@ -97,6 +103,11 @@ class DataDelivery:
             logger.error(
                 f"FileNotFoundError during the delivery of: {raw_metadata_file_path}: {e}"
             )
+        except JSONDecodeError as e:
+            logger.error(
+                f"Exception during the detection of: {raw_metadata_file_path}: {e}"
+            )
+            self._quarantine_data(metadata_path=raw_metadata_file_path)
         except Exception as e:
             logger.error(
                 f"Exception during the delivery of: {raw_metadata_file_path}: {e}"
@@ -126,6 +137,11 @@ class DataDelivery:
             logger.error(
                 f"FileNotFoundError during the delivery of: {detection_metadata_file_path}: {e}"
             )
+        except JSONDecodeError as e:
+            logger.error(
+                f"Exception during the detection of: {detection_metadata_file_path}: {e}"
+            )
+            self._quarantine_data(metadata_path=detection_metadata_file_path)
         except Exception as e:
             logger.error(
                 f"Exception during the delivery of: {detection_metadata_file_path}: {e}"
@@ -141,3 +157,16 @@ class DataDelivery:
 
         delete_file(image_full_path)
         delete_file(detection_metadata_file_path)
+
+    def _quarantine_data(self, metadata_path: str):
+        """
+        Moves the metadata and corresponding image to the quarantine folder.
+        """
+        metadata_rel_path = os.path.relpath(
+            path=metadata_path,
+            start=self.detections_folder,
+        )
+        metadata_destination_file_path = os.path.join(
+            self.quarantine_output_folder, metadata_rel_path
+        )
+        move_file(metadata_path, metadata_destination_file_path)
