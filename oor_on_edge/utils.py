@@ -75,7 +75,6 @@ def log_execution_time(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         start_time = time.time()
-        logger.debug(f"Starting {func.__name__}...")
         result = func(*args, **kwargs)
         end_time = time.time()
         duration = end_time - start_time
@@ -89,7 +88,7 @@ def move_file(file_path: str, output_file_path: str):
     try:
         os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
         shutil.move(file_path, output_file_path)
-        logger.info(f"{file_path} has been moved to {output_file_path}.")
+        logger.debug(f"{file_path} has been moved to {output_file_path}.")
     except FileNotFoundError:
         logger.error(f"{file_path} does not exist.")
     except Exception as e:
@@ -101,7 +100,7 @@ def copy_file(file_path: str, output_file_path: str):
     try:
         os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
         shutil.copyfile(file_path, output_file_path)
-        logger.info(f"{file_path} has been moved to {output_file_path}.")
+        logger.debug(f"{file_path} has been moved to {output_file_path}.")
     except FileNotFoundError:
         logger.error(f"{file_path} does not exist.")
     except Exception as e:
@@ -112,7 +111,7 @@ def copy_file(file_path: str, output_file_path: str):
 def delete_file(file_path: str):
     try:
         os.remove(file_path)
-        logger.info(f"{file_path} has been deleted.")
+        logger.debug(f"{file_path} has been deleted.")
     except FileNotFoundError:
         logger.error(f"{file_path} does not exist.")
     except Exception as e:

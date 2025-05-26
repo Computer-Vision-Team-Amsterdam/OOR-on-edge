@@ -88,7 +88,7 @@ class IoTHandler:
             try:
                 success, result = self._store_blob(storage_info, file_source_path)
                 if success:
-                    logger.info(f"Upload succeeded. Result is: {result}")
+                    logger.debug(f"Upload succeeded. Result is: {result}")
                     device_client.notify_blob_upload_status(
                         storage_info["correlationId"],
                         True,
@@ -138,7 +138,7 @@ class IoTHandler:
                 blob_info["sasToken"],
             )
 
-            logger.info(
+            logger.debug(
                 "\nUploading file: {} to Azure Storage as blob: {} in container {}\n".format(
                     file_name, blob_info["blobName"], blob_info["containerName"]
                 )

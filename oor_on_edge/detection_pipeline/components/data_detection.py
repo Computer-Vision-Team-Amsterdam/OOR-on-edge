@@ -249,7 +249,6 @@ class DataDetection:
             )
         return success
 
-    @utils.log_execution_time
     def _detect_and_blur_image(
         self,
         frame_metadata: FrameMetadata,
@@ -277,7 +276,6 @@ class DataDetection:
         )
         return n_detections
 
-    @utils.log_execution_time
     def _process_detections_and_blur_image(
         self,
         model_results: Results,
@@ -316,7 +314,6 @@ class DataDetection:
 
         return n_detections
 
-    @utils.log_execution_time
     def _delete_data_step(self, frame_metadata: FrameMetadata):
         """
         Deletes the data given by the provided FrameMetadata:
@@ -326,7 +323,6 @@ class DataDetection:
         utils.delete_file(frame_metadata.get_image_full_path())
         utils.delete_file(frame_metadata.get_file_path())
 
-    @utils.log_execution_time
     def _move_data(self, frame_metadata: FrameMetadata):
         """
         Moves the data given by the provided FrameMetadata to the training_mode output folder:
