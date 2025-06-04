@@ -52,3 +52,4 @@ logging:
     datefmt: "%Y-%m-%d %H:%M:%S"
   ai_instrumentation_key: "{AI_INSTRUMENTATION_KEY}"
   luna_logs_dir: "/cvt_logs"
+  sleep_time: 30
