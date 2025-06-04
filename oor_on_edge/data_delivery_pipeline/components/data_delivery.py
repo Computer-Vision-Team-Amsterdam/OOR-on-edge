@@ -34,12 +34,14 @@ class DataDelivery:
             "quarantine",
         )
 
-    def run_pipeline(self):
+    def run_pipeline(self) -> bool:
         """
         Runs the data delivery pipeline:
         1. retrieve all the images and metadata that need to be delivered;
         2. deliver the data to Azure;
         3. delete the delivered data from the device.
+
+        Returns True if there was any data to deliver, False otherwise.
         """
         logger.debug(f"Running delivery pipeline on {self.detections_folder}..")
 
@@ -68,6 +70,9 @@ class DataDelivery:
             f"and {len(detection_metadata_file_paths)} detections."
         )
 
+        if len(raw_metadata_file_paths) + len(detection_metadata_file_paths) == 0:
+            return False
+
         raw_metadata_success_count = 0
         detection_metadata_success_count = 0
 
@@ -87,6 +92,7 @@ class DataDelivery:
             f"Successfully delivered: {raw_metadata_success_count}/{len(raw_metadata_file_paths)} raw metadata files "
             f"and {detection_metadata_success_count}/{len(detection_metadata_file_paths)} detections."
         )
+        return True
 
     @log_execution_time
     def _deliver_raw_metadata(self, raw_metadata_file_path: str) -> bool:

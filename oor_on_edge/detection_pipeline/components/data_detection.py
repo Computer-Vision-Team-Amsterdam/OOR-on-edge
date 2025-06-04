@@ -162,12 +162,14 @@ class DataDetection:
 
         return (gps_valid and accept_delay), gps_delay
 
-    def run_pipeline(self):
+    def run_pipeline(self) -> bool:
         """
         Runs the detection pipeline:
         1. find the images to detect;
         2. detect objects of target class;
         3. delete the raw images.
+
+        Returns True if there was any data to process, False otherwise.
         """
         logger.debug(
             f"Running container detection pipeline on {self.metadata_folder}.."
@@ -180,6 +182,9 @@ class DataDetection:
         logger.info(
             f"Number of metadata files in detection queue: {len(metadata_file_paths)}"
         )
+
+        if len(metadata_file_paths) == 0:
+            return False
 
         self.image_processed_count = 0
         self.target_objects_detected_count = 0
@@ -214,6 +219,7 @@ class DataDetection:
         )
 
         raw_metadata_aggregator.save_and_reset()
+        return True
 
     @utils.log_execution_time
     def _process_metadata_file(self, frame_metadata: FrameMetadata) -> bool:
