@@ -8,7 +8,7 @@ azure_iot:
   shared_access_key: "{SHARED_ACCESS_KEY_IOT}"
 
 data_delivery_pipeline:
-  sleep_time: 30
+  sleep_time: 60
 
 detection_pipeline:
   input_path: "/input"
@@ -37,7 +37,7 @@ detection_pipeline:
   draw_bounding_boxes: False  # Whether to draw bounding boxes of target class objects
   skip_invalid_gps: True  # Whether or not to skip invalid GPS values
   acceptable_gps_delay: 5  # Acceptable delay in seconds, on inf to allow any delay
-  sleep_time: 30
+  sleep_time: 60
   training_mode: False
   training_mode_destination_path: "/training_mode"
   save_blurred_labels: False  # If True, annotations of blurred objects will be saved in training_mode_destination_path
@@ -52,3 +52,4 @@ logging:
     datefmt: "%Y-%m-%d %H:%M:%S"
   ai_instrumentation_key: "{AI_INSTRUMENTATION_KEY}"
   luna_logs_dir: "/cvt_logs"
+  sleep_time: 60

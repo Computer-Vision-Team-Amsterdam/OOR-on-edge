@@ -89,7 +89,7 @@ def main():
             log_status(logger, metadata_folder, input_folder, detections_output_folder)
         except Exception:
             logger.error(
-                f"Exception occurred in data delivery pipeline: {traceback.format_exc()}"
+                f"Exception occurred in performance monitoring pipeline: {traceback.format_exc()}"
             )
             logger.error(traceback.format_exc())
         sleep(sleep_time)

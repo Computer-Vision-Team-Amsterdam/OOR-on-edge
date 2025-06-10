@@ -19,12 +19,14 @@ def main():
         f"Running the detection pipeline on {settings['detection_pipeline']['input_path']}.."
     )
     while True:
+        active = False
         try:
-            detection_pipeline.run_pipeline()
+            active = detection_pipeline.run_pipeline()
         except Exception as e:
             logger.error(f"Exception occurred in container detection: {e}")
             logger.error(traceback.format_exc())
-        time.sleep(settings["detection_pipeline"]["sleep_time"])
+        if not active:
+            time.sleep(settings["detection_pipeline"]["sleep_time"])
 
 
 if __name__ == "__main__":

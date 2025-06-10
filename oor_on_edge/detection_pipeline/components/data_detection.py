@@ -162,12 +162,14 @@ class DataDetection:
 
         return (gps_valid and accept_delay), gps_delay
 
-    def run_pipeline(self):
+    def run_pipeline(self) -> bool:
         """
         Runs the detection pipeline:
         1. find the images to detect;
         2. detect objects of target class;
         3. delete the raw images.
+
+        Returns True if there was any data to process, False otherwise.
         """
         logger.debug(
             f"Running container detection pipeline on {self.metadata_folder}.."
@@ -180,6 +182,9 @@ class DataDetection:
         logger.info(
             f"Number of metadata files in detection queue: {len(metadata_file_paths)}"
         )
+
+        if len(metadata_file_paths) == 0:
+            return False
 
         self.image_processed_count = 0
         self.target_objects_detected_count = 0
@@ -214,6 +219,7 @@ class DataDetection:
         )
 
         raw_metadata_aggregator.save_and_reset()
+        return True
 
     @utils.log_execution_time
     def _process_metadata_file(self, frame_metadata: FrameMetadata) -> bool:
@@ -249,7 +255,6 @@ class DataDetection:
             )
         return success
 
-    @utils.log_execution_time
     def _detect_and_blur_image(
         self,
         frame_metadata: FrameMetadata,
@@ -277,7 +282,6 @@ class DataDetection:
         )
         return n_detections
 
-    @utils.log_execution_time
     def _process_detections_and_blur_image(
         self,
         model_results: Results,
@@ -316,7 +320,6 @@ class DataDetection:
 
         return n_detections
 
-    @utils.log_execution_time
     def _delete_data_step(self, frame_metadata: FrameMetadata):
         """
         Deletes the data given by the provided FrameMetadata:
@@ -326,7 +329,6 @@ class DataDetection:
         utils.delete_file(frame_metadata.get_image_full_path())
         utils.delete_file(frame_metadata.get_file_path())
 
-    @utils.log_execution_time
     def _move_data(self, frame_metadata: FrameMetadata):
         """
         Moves the data given by the provided FrameMetadata to the training_mode output folder:

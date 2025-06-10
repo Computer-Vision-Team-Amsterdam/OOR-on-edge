@@ -18,14 +18,16 @@ def main():
         f"Running data delivery pipeline on {settings['detection_pipeline']['detections_output_path']}.."
     )
     while True:
+        active = False
         try:
-            data_delivery_pipeline.run_pipeline()
+            active = data_delivery_pipeline.run_pipeline()
         except Exception:
             logger.error(
                 f"Exception occurred in data delivery pipeline: {traceback.format_exc()}"
             )
             logger.error(traceback.format_exc())
-        time.sleep(settings["data_delivery_pipeline"]["sleep_time"])
+        if not active:
+            time.sleep(settings["data_delivery_pipeline"]["sleep_time"])
 
 
 if __name__ == "__main__":

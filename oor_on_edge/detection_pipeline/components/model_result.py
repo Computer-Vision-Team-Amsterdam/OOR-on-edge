@@ -95,7 +95,7 @@ class ModelResult:
         Number of detected target objects as int
         """
         for summary_str in self._yolo_result_summary():
-            logger.info(summary_str)
+            logger.debug(summary_str)
 
         target_idxs = np.where(
             np.in1d(self.boxes.cls, self.target_classes)
@@ -275,7 +275,6 @@ class ModelResult:
             x_max = min(img_width, x_max + box_padding)
             y_max = min(img_height, y_max + box_padding)
 
-            logger.debug(f"Blurring inside: {(x_min, y_min)} -> {(x_max, y_max)}")
             area_to_blur = self.image[y_min:y_max, x_min:x_max]
             blurred = cv2.GaussianBlur(
                 area_to_blur, (blur_kernel_size, blur_kernel_size), 0
@@ -317,7 +316,6 @@ class ModelResult:
             x_max = min(img_width, x_max + box_padding)
             y_max = min(img_height, y_max + box_padding)
 
-            logger.debug(f"Blurring outside: {(x_min, y_min)} -> {(x_max, y_max)}")
             blurred_image[y_min:y_max, x_min:x_max] = self.image[
                 y_min:y_max, x_min:x_max
             ]
@@ -372,7 +370,6 @@ class ModelResult:
             x_max = min(img_width, x_max + box_padding)
             y_max = min(img_height, y_max + box_padding)
 
-            logger.debug(f"Cropping: {(x_min, y_min)} -> {(x_max, y_max)}")
             if not fill_bg:
                 cropped_images.append(self.image[y_min:y_max, x_min:x_max].copy())
             else:
@@ -417,9 +414,6 @@ class ModelResult:
             x_max = min(img_width, x_max + box_padding)
             y_max = min(img_height, y_max + box_padding)
 
-            logger.debug(
-                f"Drawing: {(x_min, y_min)} -> {(x_max, y_max)} in colour {colour}"
-            )
             self.image = cv2.rectangle(
                 self.image,
                 (x_min, y_min),

@@ -213,7 +213,7 @@ class MetadataAggregator:
 
         self.reset()
 
-        logger.info(f"Aggregated metadata written to {out_file}")
+        logger.debug(f"Aggregated metadata written to {out_file}")
 
 
 def get_timestamp_from_metadata_file(metadata_file: str) -> datetime:
