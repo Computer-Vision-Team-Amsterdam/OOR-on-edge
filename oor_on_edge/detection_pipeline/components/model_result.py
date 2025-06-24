@@ -94,32 +94,34 @@ class ModelResult:
         -------
         Number of detected target objects as int
         """
-        for summary_str in self._yolo_result_summary():
-            logger.debug(summary_str)
-
         target_idxs = np.where(
-            np.in1d(self.boxes.cls, self.target_classes)
+            np.isin(self.boxes.cls, self.target_classes)
             & (self.boxes.conf >= self.target_classes_conf)
         )[0]
-        if len(target_idxs) == 0:
-            logger.debug("No container detected, not storing the image.")
-            return 0
-
         sensitive_idxs = np.where(
-            np.in1d(self.boxes.cls, self.sensitive_classes)
+            np.isin(self.boxes.cls, self.sensitive_classes)
             & (self.boxes.conf >= self.sensitive_classes_conf)
         )[0]
-        if len(sensitive_idxs) > 0:
-            sensitive_bounding_boxes = self.boxes[sensitive_idxs].xyxy
-            self.blur_inside_boxes(sensitive_bounding_boxes)
 
-        if self.draw_boxes:
-            target_bounding_boxes = self.boxes[target_idxs].xyxy
-            self.draw_bounding_boxes(target_bounding_boxes)
+        for summary_str in self._yolo_result_summary(
+            idxs=np.union1d(target_idxs, sensitive_idxs)
+        ):
+            logger.debug(summary_str)
 
-        self._save_result(
-            target_idxs, sensitive_idxs, image_detection_path, image_file_name
-        )
+        if len(target_idxs) == 0:
+            logger.debug("No container detected, not storing the image.")
+        else:
+            if len(sensitive_idxs) > 0:
+                sensitive_bounding_boxes = self.boxes[sensitive_idxs].xyxy
+                self.blur_inside_boxes(sensitive_bounding_boxes)
+
+            if self.draw_boxes:
+                target_bounding_boxes = self.boxes[target_idxs].xyxy
+                self.draw_bounding_boxes(target_bounding_boxes)
+
+            self._save_result(
+                target_idxs, sensitive_idxs, image_detection_path, image_file_name
+            )
 
         return len(target_idxs)
 
@@ -185,7 +187,7 @@ class ModelResult:
 
         return annotation_dicts
 
-    def _yolo_result_summary(self) -> Tuple[str, str]:
+    def _yolo_result_summary(self, idxs: List[int]) -> Tuple[str, str]:
         """
         Returns a tuple:
 
@@ -194,7 +196,9 @@ class ModelResult:
             str: a readably summary of inference speed
         )
         """
-        obj_classes, obj_counts = np.unique(self.result.boxes.cls, return_counts=True)
+        obj_classes, obj_counts = np.unique(
+            self.result.boxes[idxs].cls, return_counts=True
+        )
         obj_str = "Detected: {"
         for obj_cls, obj_count in zip(obj_classes, obj_counts):
             obj_str = obj_str + f"{self.result.names[obj_cls]}: {obj_count}, "
