@@ -206,6 +206,7 @@ class DataDetection:
                 else:
                     self._delete_data_step(frame_metadata=frame_metadata)
             except Exception as e:
+                # Known exceptions: JSONDecodeError; 'NoneType' object has no attribute 'shape'
                 logger.error(
                     f"Exception during the detection of: {metadata_file_path}: {e}"
                 )
