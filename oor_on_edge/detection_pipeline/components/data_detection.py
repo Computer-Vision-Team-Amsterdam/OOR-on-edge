@@ -4,7 +4,6 @@ import os
 import pathlib
 import time
 from datetime import datetime
-from json.decoder import JSONDecodeError
 from typing import Tuple
 
 import torch
@@ -199,15 +198,15 @@ class DataDetection:
                     metadata_file_path
                 )
 
-                success = self._process_metadata_file(frame_metadata=frame_metadata)
-                if success:
-                    raw_metadata_aggregator.append(frame_metadata=raw_frame_metadata)
+                self._process_metadata_file(frame_metadata=frame_metadata)
+                raw_metadata_aggregator.append(frame_metadata=raw_frame_metadata)
 
-                    if self.training_mode:
-                        self._move_data(frame_metadata=frame_metadata)
-                    else:
-                        self._delete_data_step(frame_metadata=frame_metadata)
-            except JSONDecodeError as e:
+                if self.training_mode:
+                    self._move_data(frame_metadata=frame_metadata)
+                else:
+                    self._delete_data_step(frame_metadata=frame_metadata)
+            except Exception as e:
+                # Known exceptions: JSONDecodeError; 'NoneType' object has no attribute 'shape'
                 logger.error(
                     f"Exception during the detection of: {metadata_file_path}: {e}"
                 )
@@ -222,38 +221,30 @@ class DataDetection:
         return True
 
     @utils.log_execution_time
-    def _process_metadata_file(self, frame_metadata: FrameMetadata) -> bool:
+    def _process_metadata_file(self, frame_metadata: FrameMetadata) -> None:
         """
         Process the image corresponding to the given FrameMetadata file. Returns
         a boolean indicating success.
         """
-        success = False
-        try:
-            metadata_file_path = frame_metadata.get_file_path()
-            logger.debug(f"metadata_file_path: {metadata_file_path}")
+        metadata_file_path = frame_metadata.get_file_path()
+        logger.debug(f"metadata_file_path: {metadata_file_path}")
 
-            accept_gps, gps_delay = self._accept_gps(frame_metadata=frame_metadata)
-            if not accept_gps:
-                logger.debug(
-                    f"No valid GPS (delay={gps_delay:.1f}s), "
-                    f"skipping frame: {frame_metadata.get_image_filename()}"
-                )
-            else:
-                if os.path.isfile(frame_metadata.get_image_full_path()):
-                    self.target_objects_detected_count += self._detect_and_blur_image(
-                        frame_metadata=frame_metadata,
-                    )
-                    self.image_processed_count += 1
-                else:
-                    logger.debug(
-                        f"Image {frame_metadata.get_image_full_path()} not found, skipping."
-                    )
-            success = True
-        except Exception as e:
-            logger.error(
-                f"Exception during the detection of: {metadata_file_path}: {e}"
+        accept_gps, gps_delay = self._accept_gps(frame_metadata=frame_metadata)
+        if not accept_gps:
+            logger.debug(
+                f"No valid GPS (delay={gps_delay:.1f}s), "
+                f"skipping frame: {frame_metadata.get_image_filename()}"
             )
-        return success
+        else:
+            if os.path.isfile(frame_metadata.get_image_full_path()):
+                self.target_objects_detected_count += self._detect_and_blur_image(
+                    frame_metadata=frame_metadata,
+                )
+                self.image_processed_count += 1
+            else:
+                logger.debug(
+                    f"Image {frame_metadata.get_image_full_path()} not found, skipping."
+                )
 
     def _detect_and_blur_image(
         self,
