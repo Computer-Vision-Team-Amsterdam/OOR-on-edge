@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +75,13 @@ class FrameMetadata:
     def content(self) -> dict:
         """Get the content of the metadata as dict."""
         return self.metadata
+
+    def get_lat_lon(self) -> Tuple[float, float]:
+        """Get the LatLon coordinates as tuple."""
+        return (
+            self.metadata["gps_data"]["latitude"],
+            self.metadata["gps_data"]["longitude"],
+        )
 
     def get_gps_delay(self) -> float:
         """
