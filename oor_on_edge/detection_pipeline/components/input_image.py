@@ -1,17 +1,22 @@
 import logging
-from typing import Dict, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
+from cv2.typing import MatLike
 
 logger = logging.getLogger("detection_pipeline")
 
 
 class InputImage:
-    mapxy = [None, None]
+    mapxy: List[Optional[MatLike]] = [None, None]
 
     def __init__(self, image_full_path: str):
-        self.image = cv2.imread(str(image_full_path))
+        image = cv2.imread(str(image_full_path))
+        if image is None:
+            raise ValueError("InputImage is invalid: None")
+        else:
+            self.image = image
 
     def resize(self, output_image_size: Tuple[int, int]):
         """
