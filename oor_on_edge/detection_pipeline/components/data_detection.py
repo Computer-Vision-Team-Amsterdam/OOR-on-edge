@@ -26,9 +26,11 @@ class DataDetection:
         """
         Object that find containers in the images using a pre-trained YOLO model and blurs sensitive data.
         """
-        detection_settings = OOROnEdgeSettings.get_settings()["detection_pipeline"]
+        settings = OOROnEdgeSettings.get_settings()
+        detection_settings = settings["detection_pipeline"]
 
         self.input_folder = detection_settings["input_path"]
+        self.input_path_on_host = detection_settings["input_path_on_host"]
         self.metadata_folder = os.path.join(
             self.input_folder, detection_settings["metadata_rel_path"]
         )
@@ -83,6 +85,13 @@ class DataDetection:
         self.skip_invalid_gps = detection_settings["skip_invalid_gps"]
         self.gps_accept_delay = float(detection_settings["acceptable_gps_delay"])
 
+        self.project_settings = {
+            "model_name": self.model_name,
+            "aml_model_version": settings["aml_model_version"],
+            "project_version": settings["project_version"],
+            "customer": settings["customer"],
+        }
+
         logger.info(f"Inference_params: {self.inference_params}")
         logger.info(f"Pretrained_model_path: {self.pretrained_model_path}")
         logger.info(f"Yolo model: {self.model_name}")
@@ -126,24 +135,14 @@ class DataDetection:
         - frame_metadata contains the raw metadata enriched with project info
         - raw_metadata contains only the raw metadata for aggregation
         """
-        settings = OOROnEdgeSettings.get_settings()
-
         frame_metadata = FrameMetadata(
             json_file=metadata_file_path,
-            input_path_on_host=settings["detection_pipeline"]["input_path_on_host"],
+            input_path_on_host=self.input_path_on_host,
             input_path_local=self.input_folder,
         )
         raw_frame_metadata = copy.deepcopy(frame_metadata)
 
-        frame_metadata.add_or_update_field(
-            "project",
-            {
-                "model_name": self.model_name,
-                "aml_model_version": settings["aml_model_version"],
-                "project_version": settings["project_version"],
-                "customer": settings["customer"],
-            },
-        )
+        frame_metadata.add_or_update_field("project", self.project_settings)
 
         return frame_metadata, raw_frame_metadata
 
