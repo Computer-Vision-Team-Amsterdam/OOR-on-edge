@@ -16,6 +16,17 @@ GEODETIC = Geod(ellps="WGS84")
 
 
 class Speedometer:
+    """
+    Speedometer based on GPS metadata. The speed is provided as an Exponential
+    Moving Average over the data points. The exponent can be controlled using
+    the `ema_factor`, where bigger values average over more history yielding a
+    smoother signal, and 1 means no history.
+
+    Parameters
+    ----------
+    ema_factor: int = 10
+        Used as: `ema = ema + (new_value - ema) / ema_factor`
+    """
 
     last_location: Optional[Tuple[float, float]]
     last_timestamp: Optional[datetime]
@@ -23,11 +34,25 @@ class Speedometer:
     counter: int
     session: Optional[str]
 
-    def __init__(self, factor: int = 10):
-        self.factor = factor
+    def __init__(self, ema_factor: int = 10):
+        self.ema_factor = ema_factor
         self.reset()
 
     def update(self, frame_metadata: FrameMetadata) -> Tuple[float, float]:
+        """
+        Update the speed based on a new GPS data point. The previous datapoint
+        is used to compute the distance and duration of the update, upon which
+        the speed is based.
+
+        Parameters
+        ----------
+        frame_metadata: :class:`~FrameMetadata`
+            Metadata including the GPS coordinates and timestamp.
+
+        Returns
+        -------
+        A tuple: (new EMA, instantaneous speed of the last step)
+        """
         if self.session and self.session != os.path.dirname(
             frame_metadata.get_image_full_path()
         ):
@@ -49,7 +74,7 @@ class Speedometer:
         speed = distance / duration.total_seconds()
 
         self.counter += 1
-        self.ema = self.ema + (speed - self.ema) / min(self.counter, self.factor)
+        self.ema = self.ema + (speed - self.ema) / min(self.counter, self.ema_factor)
 
         self.last_location = frame_metadata.get_lat_lon()
         self.last_timestamp = frame_metadata.get_timestamp()
@@ -57,6 +82,7 @@ class Speedometer:
         return (self.ema, speed)
 
     def reset(self):
+        """Reset the speedometer."""
         self.last_location = None
         self.last_timestamp = None
         self.ema = 0
@@ -65,17 +91,47 @@ class Speedometer:
 
 
 class MoveDetector:
+    """
+    MoveDetector based on GPS metadata. Movement detection is based on the
+    difference in GPS coordinates since the last position where movement was
+    detected.
+
+    Parameters
+    ----------
+    min_dist: float = 1.0
+        Minimum distance required since last stored coordinates to detect
+        movement.
+    timeout: float = 5.0
+        Timeout since last detected movement for which the detector keeps its
+        current status, used to compensate for intermittent GPS updates.
+    """
 
     last_location: Optional[Tuple[float, float]]
     last_timestamp: Optional[datetime]
     session: Optional[str]
 
-    def __init__(self, min_dist: float = 1.0, min_time: float = 5.0):
+    def __init__(self, min_dist: float = 1.0, timeout: float = 5.0):
         self.min_dist = min_dist
-        self.min_time = min_time
+        self.timeout = timeout
         self.reset()
 
     def update(self, frame_metadata: FrameMetadata) -> bool:
+        """
+        Update the move detector based on a new GPS data point. A move is
+        detected if the new GPS coordinates are at least `min_dist` away from
+        the previous stored coordinates OR the time passed is less than
+        `timeout`. When a move is detected the new GPS coordinates and timestamp
+        are stored to compare future values against.
+
+        Parameters
+        ----------
+        frame_metadata: :class:`~FrameMetadata`
+            Metadata including the GPS coordinates and timestamp.
+
+        Returns
+        -------
+        A boolean indicating whether the device is moving.
+        """
         if self.session and self.session != os.path.dirname(
             frame_metadata.get_image_full_path()
         ):
@@ -99,12 +155,13 @@ class MoveDetector:
             self.last_location = frame_metadata.get_lat_lon()
             self.last_timestamp = frame_metadata.get_timestamp()
             return True
-        elif duration.total_seconds() <= self.min_time:
+        elif duration.total_seconds() <= self.timeout:
             return True
         else:
             return False
 
     def reset(self):
+        """Reset the move detector."""
         self.last_location = None
         self.last_timestamp = None
         self.session = None

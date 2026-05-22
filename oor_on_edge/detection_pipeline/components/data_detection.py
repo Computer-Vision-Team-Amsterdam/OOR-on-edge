@@ -87,12 +87,12 @@ class DataDetection:
 
         self.min_speed = float(detection_settings.get(["min_speed"], 0.25))
         self.speedometer = utils.Speedometer(
-            factor=detection_settings.get(["speedometer_ema_factor"], 10)
+            ema_factor=detection_settings.get(["speedometer_ema_factor"], 10)
         )
 
         self.move_detector = utils.MoveDetector(
             min_dist=detection_settings.get(["move_detection_min_dist"], 2.0),
-            min_time=detection_settings.get(["move_detection_timeout"], 5.0),
+            timeout=detection_settings.get(["move_detection_timeout"], 5.0),
         )
 
         self.project_settings = {
