@@ -14,12 +14,13 @@ class InputImage:
         self.image = cv2.imread(str(image_full_path))
 
     def resize(self, output_image_size: Tuple[int, int]):
-        """Resizes the image
+        """
+        Resize the image.
 
         Parameters
         ----------
-        output_image_size : List
-            Output size on format: [width, height]
+        output_image_size: Tuple[int, int]
+            Output size in format (width, height)
         """
         if (self.image.shape[0] != output_image_size[1]) or (
             self.image.shape[1] != output_image_size[0]
@@ -27,7 +28,8 @@ class InputImage:
             self.image = cv2.resize(self.image, output_image_size)
 
     def defisheye(self, defisheye_params: Dict):
-        """Removes fisheye effect from the images.
+        """
+        Removes fisheye effect from the images.
 
         Parameters
         ----------

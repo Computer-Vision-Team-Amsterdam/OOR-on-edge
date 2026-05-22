@@ -2,6 +2,9 @@
 *.jpg
 *.mp4
 *.csv
+*.json
+
+.iot*env
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -173,5 +176,3 @@ output/
 
 # Mac .DS_Store
 *.DS_Store
-
-config.json
