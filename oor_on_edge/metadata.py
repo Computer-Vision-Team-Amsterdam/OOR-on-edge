@@ -211,7 +211,11 @@ class MetadataAggregator:
         os.makedirs(self.output_folder, exist_ok=True)
         out_file = os.path.join(
             self.output_folder,
-            "raw_metadata_" + self.timestamp_start.strftime("%y%m%d_%H%M%S") + ".json",
+            (
+                "raw_metadata_"
+                + self.timestamp_start.strftime("%y%m%d_%H%M%S_%f")
+                + ".json"
+            ),
         )
         json_content = {
             "timestamp_start": str(self.timestamp_start),
