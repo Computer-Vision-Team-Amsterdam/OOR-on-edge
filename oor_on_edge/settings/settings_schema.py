@@ -53,6 +53,7 @@ class DetectionPipelineSpec(SettingsSpecModel):
     draw_bounding_boxes: bool = True
     skip_invalid_gps: bool = False
     acceptable_gps_delay: float = float("inf")
+    max_aggregated_metadata_length: int = 500
     sleep_time: int
     training_mode: bool
     training_mode_destination_path: str

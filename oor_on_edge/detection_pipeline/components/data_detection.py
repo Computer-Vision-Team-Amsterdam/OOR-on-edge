@@ -83,6 +83,10 @@ class DataDetection:
         self.skip_invalid_gps = detection_settings["skip_invalid_gps"]
         self.gps_accept_delay = float(detection_settings["acceptable_gps_delay"])
 
+        self.metadata_agg_max_length = detection_settings[
+            "max_aggregated_metadata_length"
+        ]
+
         logger.info(f"Inference_params: {self.inference_params}")
         logger.info(f"Pretrained_model_path: {self.pretrained_model_path}")
         logger.info(f"Yolo model: {self.model_name}")
@@ -189,7 +193,8 @@ class DataDetection:
         self.target_objects_detected_count = 0
 
         raw_metadata_aggregator = MetadataAggregator(
-            output_folder=self.detections_output_folder
+            output_folder=self.detections_output_folder,
+            max_length=self.metadata_agg_max_length,
         )
 
         for metadata_file_path in metadata_file_paths:

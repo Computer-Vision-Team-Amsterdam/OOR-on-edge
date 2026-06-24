@@ -37,6 +37,7 @@ detection_pipeline:
   draw_bounding_boxes: False  # Whether to draw bounding boxes of target class objects
   skip_invalid_gps: True  # Whether or not to skip invalid GPS values
   acceptable_gps_delay: 5  # Acceptable delay in seconds, on inf to allow any delay
+  max_aggregated_metadata_length: 120  # Save and reset when aggregated metadata reaches this length 
   sleep_time: 60
   training_mode: False
   training_mode_destination_path: "/training_mode"
