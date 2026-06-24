@@ -85,14 +85,14 @@ class DataDetection:
         self.skip_invalid_gps = detection_settings["skip_invalid_gps"]
         self.gps_accept_delay = float(detection_settings["acceptable_gps_delay"])
 
-        self.min_speed = float(detection_settings.get(["min_speed"], 0.25))
+        self.min_speed = float(detection_settings.get("min_speed", 0.25))
         self.speedometer = utils.Speedometer(
-            ema_factor=detection_settings.get(["speedometer_ema_factor"], 10)
+            ema_factor=detection_settings.get("speedometer_ema_factor", 10)
         )
 
         self.move_detector = utils.MoveDetector(
-            min_dist=detection_settings.get(["move_detection_min_dist"], 2.0),
-            timeout=detection_settings.get(["move_detection_timeout"], 5.0),
+            min_dist=detection_settings.get("move_detection_min_dist", 2.0),
+            timeout=detection_settings.get("move_detection_timeout", 5.0),
         )
 
         self.project_settings = {
@@ -176,7 +176,7 @@ class DataDetection:
         """
         speed, _ = self.speedometer.update(frame_metadata)
         moving = self.move_detector.update(frame_metadata)
-        return ((speed >= self.min_speed) or moving, speed)
+        return ((speed >= self.min_speed) or moving), speed
 
     def run_pipeline(self) -> bool:
         """
