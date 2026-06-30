@@ -37,6 +37,10 @@ detection_pipeline:
   draw_bounding_boxes: False  # Whether to draw bounding boxes of target class objects
   skip_invalid_gps: True  # Whether or not to skip invalid GPS values
   acceptable_gps_delay: 5  # Acceptable delay in seconds, on inf to allow any delay
+  speedometer_ema_factor: 10  # Exponential Moving Average factor for speedometer
+  min_speed: 0.25  # Minimum driving speed in m/s, anything below will be skipped
+  move_detection_timeout: 5.0  # Detector timeout in seconds after last detected move
+  move_detection_min_dist: 2.0  # Distance in m after which device is assumed to be moving
   max_aggregated_metadata_length: 120  # Save and reset when aggregated metadata reaches this length 
   sleep_time: 60
   training_mode: False

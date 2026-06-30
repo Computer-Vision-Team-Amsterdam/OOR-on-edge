@@ -26,9 +26,11 @@ class DataDetection:
         """
         Object that find containers in the images using a pre-trained YOLO model and blurs sensitive data.
         """
-        detection_settings = OOROnEdgeSettings.get_settings()["detection_pipeline"]
+        settings = OOROnEdgeSettings.get_settings()
+        detection_settings = settings["detection_pipeline"]
 
         self.input_folder = detection_settings["input_path"]
+        self.input_path_on_host = detection_settings["input_path_on_host"]
         self.metadata_folder = os.path.join(
             self.input_folder, detection_settings["metadata_rel_path"]
         )
@@ -83,9 +85,26 @@ class DataDetection:
         self.skip_invalid_gps = detection_settings["skip_invalid_gps"]
         self.gps_accept_delay = float(detection_settings["acceptable_gps_delay"])
 
+        self.min_speed = float(detection_settings.get("min_speed", 0.25))
+        self.speedometer = utils.Speedometer(
+            ema_factor=detection_settings.get("speedometer_ema_factor", 10)
+        )
+
+        self.move_detector = utils.MoveDetector(
+            min_dist=detection_settings.get("move_detection_min_dist", 2.0),
+            timeout=detection_settings.get("move_detection_timeout", 5.0),
+        )
+
         self.metadata_agg_max_length = detection_settings[
             "max_aggregated_metadata_length"
         ]
+
+        self.project_settings = {
+            "model_name": self.model_name,
+            "aml_model_version": settings["aml_model_version"],
+            "project_version": settings["project_version"],
+            "customer": settings["customer"],
+        }
 
         logger.info(f"Inference_params: {self.inference_params}")
         logger.info(f"Pretrained_model_path: {self.pretrained_model_path}")
@@ -130,24 +149,14 @@ class DataDetection:
         - frame_metadata contains the raw metadata enriched with project info
         - raw_metadata contains only the raw metadata for aggregation
         """
-        settings = OOROnEdgeSettings.get_settings()
-
         frame_metadata = FrameMetadata(
             json_file=metadata_file_path,
-            input_path_on_host=settings["detection_pipeline"]["input_path_on_host"],
+            input_path_on_host=self.input_path_on_host,
             input_path_local=self.input_folder,
         )
         raw_frame_metadata = copy.deepcopy(frame_metadata)
 
-        frame_metadata.add_or_update_field(
-            "project",
-            {
-                "model_name": self.model_name,
-                "aml_model_version": settings["aml_model_version"],
-                "project_version": settings["project_version"],
-                "customer": settings["customer"],
-            },
-        )
+        frame_metadata.add_or_update_field("project", self.project_settings)
 
         return frame_metadata, raw_frame_metadata
 
@@ -164,6 +173,14 @@ class DataDetection:
             accept_delay = gps_delay <= self.gps_accept_delay
 
         return (gps_valid and accept_delay), gps_delay
+
+    def _is_moving(self, frame_metadata: FrameMetadata) -> Tuple[bool, float]:
+        """
+        Check whether device is currently moving.
+        """
+        speed, _ = self.speedometer.update(frame_metadata)
+        moving = self.move_detector.update(frame_metadata)
+        return ((speed >= self.min_speed) or moving), speed
 
     def run_pipeline(self) -> bool:
         """
@@ -240,16 +257,25 @@ class DataDetection:
                 f"No valid GPS (delay={gps_delay:.1f}s), "
                 f"skipping frame: {frame_metadata.get_image_filename()}"
             )
+            return
+
+        is_moving, current_speed = self._is_moving(frame_metadata=frame_metadata)
+        if not is_moving:
+            logger.debug(
+                f"Device appears to have stopped (current speed {current_speed:.2f} m/s), "
+                f"skipping frame: {frame_metadata.get_image_filename()}"
+            )
+            return
+
+        if os.path.isfile(frame_metadata.get_image_full_path()):
+            self.target_objects_detected_count += self._detect_and_blur_image(
+                frame_metadata=frame_metadata,
+            )
+            self.image_processed_count += 1
         else:
-            if os.path.isfile(frame_metadata.get_image_full_path()):
-                self.target_objects_detected_count += self._detect_and_blur_image(
-                    frame_metadata=frame_metadata,
-                )
-                self.image_processed_count += 1
-            else:
-                logger.debug(
-                    f"Image {frame_metadata.get_image_full_path()} not found, skipping."
-                )
+            logger.debug(
+                f"Image {frame_metadata.get_image_full_path()} not found, skipping."
+            )
 
     def _detect_and_blur_image(
         self,
