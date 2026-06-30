@@ -53,6 +53,10 @@ class DetectionPipelineSpec(SettingsSpecModel):
     draw_bounding_boxes: bool = True
     skip_invalid_gps: bool = False
     acceptable_gps_delay: float = float("inf")
+    speedometer_ema_factor: float
+    min_speed: float
+    move_detection_timeout: float
+    move_detection_min_dist: float
     sleep_time: int
     training_mode: bool
     training_mode_destination_path: str

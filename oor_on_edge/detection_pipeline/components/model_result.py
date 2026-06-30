@@ -170,7 +170,7 @@ class ModelResult:
         annotation_dicts: List[dict] = []
 
         for box in boxes:
-            (x, y, w, h) = map(float, (x for x in box.xywhn.squeeze()))
+            x, y, w, h = map(float, (x for x in box.xywhn.squeeze()))
             annotation_dicts.append(
                 {
                     "object_class": int(box.cls.squeeze()),
@@ -250,7 +250,7 @@ class ModelResult:
 
     def blur_inside_boxes(
         self,
-        boxes: Union[List[Tuple[float, float, float, float]], npt.NDArray[np.float_]],
+        boxes: Union[List[Tuple[float, float, float, float]], npt.NDArray[np.float64]],
         blur_kernel_size: int = 165,
         box_padding: int = 0,
     ):
@@ -287,7 +287,7 @@ class ModelResult:
 
     def blur_outside_boxes(
         self,
-        boxes: Union[List[Tuple[float, float, float, float]], npt.NDArray[np.float_]],
+        boxes: Union[List[Tuple[float, float, float, float]], npt.NDArray[np.float64]],
         blur_kernel_size: int = 165,
         box_padding: int = 0,
     ):
@@ -328,7 +328,7 @@ class ModelResult:
 
     def crop_outside_boxes(
         self,
-        boxes: Union[List[Tuple[float, float, float, float]], npt.NDArray[np.float_]],
+        boxes: Union[List[Tuple[float, float, float, float]], npt.NDArray[np.float64]],
         box_padding: int = 0,
         fill_bg: bool = False,
     ) -> List[npt.NDArray[np.int_]]:
@@ -385,7 +385,7 @@ class ModelResult:
 
     def draw_bounding_boxes(
         self,
-        boxes: Union[List[Tuple[float, float, float, float]], npt.NDArray[np.float_]],
+        boxes: Union[List[Tuple[float, float, float, float]], npt.NDArray[np.float64]],
         colours: List[Tuple[int, int, int]] = [(0, 0, 255)],
         box_padding: int = 0,
         line_thickness: int = 2,
