@@ -95,6 +95,10 @@ class DataDetection:
             timeout=detection_settings.get("move_detection_timeout", 5.0),
         )
 
+        self.metadata_agg_max_length = detection_settings[
+            "max_aggregated_metadata_length"
+        ]
+
         self.project_settings = {
             "model_name": self.model_name,
             "aml_model_version": settings["aml_model_version"],
@@ -206,7 +210,8 @@ class DataDetection:
         self.target_objects_detected_count = 0
 
         raw_metadata_aggregator = MetadataAggregator(
-            output_folder=self.detections_output_folder
+            output_folder=self.detections_output_folder,
+            max_length=self.metadata_agg_max_length,
         )
 
         for metadata_file_path in metadata_file_paths:

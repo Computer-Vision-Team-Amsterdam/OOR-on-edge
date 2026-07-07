@@ -41,6 +41,7 @@ detection_pipeline:
   min_speed: 0.25  # Minimum driving speed in m/s, anything below will be skipped
   move_detection_timeout: 5.0  # Detector timeout in seconds after last detected move
   move_detection_min_dist: 2.0  # Distance in m after which device is assumed to be moving
+  max_aggregated_metadata_length: 120  # Save and reset when aggregated metadata reaches this length 
   sleep_time: 60
   training_mode: False
   training_mode_destination_path: "/training_mode"

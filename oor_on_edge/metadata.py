@@ -143,7 +143,7 @@ class MetadataAggregator:
     timestamp_start: datetime
     timestamp_end: datetime
 
-    def __init__(self, output_folder: str):
+    def __init__(self, output_folder: str, max_length: int = -1):
         """
         Create an aggregator for metadata. The purpose is to collect consecutive
         frame metadata records and occasionally write them bundled into a single
@@ -153,8 +153,13 @@ class MetadataAggregator:
         ----------
         output_folder: str
             Where to write the aggregated metadata.
+        max_length: int = -1
+            Metadata will be stored on disk and a new aggregation will start
+            after this number of entries. This can be used to prevent potential
+            data loss on unstable devices. Set to -1 to disable.
         """
         self.output_folder = output_folder
+        self.max_length = max_length
         self.reset()
 
     def append(self, frame_metadata: FrameMetadata) -> None:
@@ -166,6 +171,12 @@ class MetadataAggregator:
         to a file and the aggregator will be reset. This is to ensure metadata
         of different recording sessions is not mixed in one metadata file.
         """
+        if (self.max_length > 0) and (len(self.frame_metadata_list) >= self.max_length):
+            logger.debug(
+                f"Aggregated metadata length reached max_length: {self.max_length}"
+            )
+            self.save_and_reset()
+            self.append(frame_metadata=frame_metadata)
         if self.data_path and self.data_path != os.path.dirname(
             frame_metadata.get_image_full_path()
         ):
@@ -207,7 +218,11 @@ class MetadataAggregator:
         os.makedirs(self.output_folder, exist_ok=True)
         out_file = os.path.join(
             self.output_folder,
-            "raw_metadata_" + self.timestamp_start.strftime("%y%m%d_%H%M%S") + ".json",
+            (
+                "raw_metadata_"
+                + self.timestamp_start.strftime("%y%m%d_%H%M%S_%f")
+                + ".json"
+            ),
         )
         json_content = {
             "timestamp_start": str(self.timestamp_start),

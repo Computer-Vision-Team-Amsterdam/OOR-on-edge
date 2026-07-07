@@ -57,6 +57,7 @@ class DetectionPipelineSpec(SettingsSpecModel):
     min_speed: float
     move_detection_timeout: float
     move_detection_min_dist: float
+    max_aggregated_metadata_length: int = 500
     sleep_time: int
     training_mode: bool
     training_mode_destination_path: str
