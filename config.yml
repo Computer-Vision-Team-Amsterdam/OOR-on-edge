@@ -35,6 +35,7 @@ detection_pipeline:
   target_classes_conf: 0.7  # 'null' means conf is taken from inference_params
   sensitive_classes_conf: null  # 'null' means conf is taken from inference_params
   draw_bounding_boxes: False  # Whether to draw bounding boxes of target class objects
+  blur_mode: "box"  # Whether to use GausianBlur ("gaussian") or a gray box ("box")
   skip_invalid_gps: True  # Whether or not to skip invalid GPS values
   acceptable_gps_delay: 5  # Acceptable delay in seconds, on inf to allow any delay
   speedometer_ema_factor: 10  # Exponential Moving Average factor for speedometer

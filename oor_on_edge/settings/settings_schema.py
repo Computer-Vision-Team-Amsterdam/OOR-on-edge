@@ -51,6 +51,7 @@ class DetectionPipelineSpec(SettingsSpecModel):
     target_classes_conf: Optional[float] = None
     sensitive_classes_conf: Optional[float] = None
     draw_bounding_boxes: bool = True
+    blur_mode: str = "gaussian"
     skip_invalid_gps: bool = False
     acceptable_gps_delay: float = float("inf")
     speedometer_ema_factor: float
