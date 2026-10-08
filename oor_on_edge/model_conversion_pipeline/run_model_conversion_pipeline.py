@@ -15,7 +15,7 @@ def main():
     run_model_conversion(
         pretrained_model_path=settings["detection_pipeline"]["pretrained_model_path"],
         model_name=settings["detection_pipeline"]["model_name"],
-        image_size=settings["detection_pipeline"]["output_image_size"],
+        image_size=settings["detection_pipeline"]["inference_params"]["img_size"],
         model_save_path=settings["detection_pipeline"]["pretrained_model_path"],
     )
 

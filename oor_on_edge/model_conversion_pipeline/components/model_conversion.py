@@ -4,27 +4,22 @@ import pathlib
 import shutil
 from typing import Tuple, Union
 
-import psutil
 from ultralytics import YOLO
 
 logger = logging.getLogger("model_conversion_pipeline")
 
 
 def _convert_model_to_trt(
-    model_path: Union[str, os.PathLike], image_size: Tuple[int, int], batch: int = 1
+    model_path: Union[str, os.PathLike],
+    image_size: Union[int, Tuple[int, int]],
+    batch: int = 1,
 ) -> str:
-    if psutil.virtual_memory().total > 8.0 * 1.073742e9:
-        workspace = 4.0
-    else:
-        workspace = 2.0
-
-    logger.debug(f"Converting model using workspace={workspace}.")
+    logger.debug(f"Converting model using image size={image_size}, batch={batch}.")
     model = YOLO(model_path, task="detect")
     model.export(
         format="engine",
-        half=True,
+        quantize=16,
         imgsz=image_size,
-        workspace=workspace,
         batch=batch,
     )
     model_path = pathlib.Path(model_path)
@@ -34,7 +29,7 @@ def _convert_model_to_trt(
 def run_model_conversion(
     pretrained_model_path: str,
     model_name: str,
-    image_size: Tuple[int, int],
+    image_size: Union[int, Tuple[int, int]],
     model_save_path: str,
     overwrite_if_exists: bool = False,
 ):
