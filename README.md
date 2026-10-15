@@ -1,6 +1,65 @@
 # OOR-on-edge
 
-This repository provides code to run a YOLO object detection model on a mobile Jetson device. The code blurs sensitive data on-edge, and transfers only images with detections to the Azure IoT landing zone.
+This repository provides code to run a YOLO object detection model on a mobile Jetson device. The code blurs sensitive data (people, license plates) on-edge, and transfers only images with detections to the Azure IoT landing zone.
+
+The model is trained to recognize the categories `construction container`, `mobile toilet`, and `scaffolding`. Model weights are provided _as is_, for model training and evaluation see our [YOLO-model-development-kit](https://github.com/Computer-Vision-Team-Amsterdam/YOLO-model-development-kit) repo. For more information on this particular project see the [scanbike](https://www.amsterdam.nl/innovatie/digitalisering-technologie/scanfiets/) project of the City of Amsterdam.
+
+
+## Project overview
+
+The project consists of four parts that run independently:
+
+- [performance monitoring](./oor_on_edge/performance_monitoring/run_performance_monitoring.py): regularly checks the number of files waiting to be processed, as well as system stats
+- [detection pipeline](./oor_on_edge/detection_pipeline/run_detection_pipeline.py): processes input files (see below) and writes results to local storage
+- [data delivery pipeline](./oor_on_edge/data_delivery_pipeline/run_data_delivery_pipeline.py): uploads results from local storage to Azure IoT landingzone
+- [model conversion pipeline](./oor_on_edge/model_conversion_pipeline/run_model_conversion_local.py): compiles a .pt YOLO model to TensorRT for better performance; this only needs to be done once
+
+For both the detection pipeline and the data delivery pipeline the general rule is that any file that has been successfully processed is immediately deleted from local storage.
+
+### Input / output data
+
+Input is expected to consist of street view images with accompanying metadata in JSON format (one metadata file per image). The metadata should minimally contain:
+
+```json
+{
+    "image_file_timestamp": str,  # timestamp in iso format
+    "image_file_name": str,  # filename of the image
+    "image_path": str,  # full path of the image file
+    "gps_data": {
+        "coordinate_time_stamp": str,  # timestamp in iso format
+        "latitude": float,
+        "longitude": float
+    }
+}
+```
+
+The [detection pipeline](./oor_on_edge/detection_pipeline/run_detection_pipeline.py) checks each image for presence of any of the target object categories; if an object is detected the image is anonymized by blurring people and license plates and stored to be uploaded to Azure IoT. The metadata for that image is also stored to be uploaded and extended by a field `detections` that holds a list of bounding boxes for each detected object in that image:
+
+```json
+{
+    "detections": [
+        {
+            "object_class": int,
+            "confidence": float,
+            "tracking_id": -1,  # tracking currently not implemented
+            "boundingBox": {
+                "x_center": float,
+                "y_center": float,
+                "width": float,
+                "height": float
+            }
+        }
+    ]
+}
+```
+
+In addition, "raw metadata" files are stored that contain the input metadata for _all_ images, including those where no objects were detected. This can be used to trace the full route of the edge device and facilitates debugging.
+
+The [data delivery pipeline](./oor_on_edge/data_delivery_pipeline/run_data_delivery_pipeline.py) uploads any images and metadata files stored by the detection pipeline to an Azure IoT landingzone.
+
+### Configuration options
+
+All parameters can be configured through the [config.yml](./config.yml) file. When run as a docker image (see below), docker specifics can be configured in the [docker compose](./docker-compose.yml) file.
 
 
 ## Installation on the Jetson device
@@ -27,7 +86,7 @@ In the project folder (e.g. `OOR-on-edge`), make changes to the following files:
         source: # add path to input folder
         target: /input
       - type: bind
-        source: # add path to folder with YOLO weights .pt or .engine file
+        source: # add path to folder with YOLO weights .pt or .engine file (e.g. the model_weights folder in this repo)
         target: /model_artifacts
       - type: bind
         source: # path where detections will be stored temporarily
