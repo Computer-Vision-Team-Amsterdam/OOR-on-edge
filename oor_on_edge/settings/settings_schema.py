@@ -43,8 +43,8 @@ class DetectionPipelineSpec(SettingsSpecModel):
     model_name: str
     pretrained_model_path: str
     inference_params: InferenceModelParameters
-    defisheye_flag: bool
-    defisheye_params: DefisheyeParameters
+    defisheye_flag: Optional[bool] = False
+    defisheye_params: Optional[DefisheyeParameters] = None
     target_classes: List[int]
     sensitive_classes: List[int]
     output_image_size: Optional[Tuple[int, int]] = None
