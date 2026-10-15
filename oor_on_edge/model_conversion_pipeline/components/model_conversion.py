@@ -4,7 +4,9 @@ import pathlib
 import shutil
 from typing import Tuple, Union
 
+from packaging.version import parse as parse_version
 from ultralytics import YOLO
+from ultralytics import __version__ as ultralytics_version
 
 logger = logging.getLogger("model_conversion_pipeline")
 
@@ -16,11 +18,17 @@ def _convert_model_to_trt(
 ) -> str:
     logger.debug(f"Converting model using image size={image_size}, batch={batch}.")
     model = YOLO(model_path, task="detect")
+    if parse_version(ultralytics_version) >= parse_version("8.4.80"):
+        export_params = {"quantize": 16}
+    else:
+        # Deprecated
+        export_params = {"half": True}
+
     model.export(
         format="engine",
-        quantize=16,
         imgsz=image_size,
         batch=batch,
+        **export_params,
     )
     model_path = pathlib.Path(model_path)
     return os.path.join(model_path.parent, model_path.stem + ".engine")
