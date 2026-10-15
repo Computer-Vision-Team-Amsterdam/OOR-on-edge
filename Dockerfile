@@ -9,10 +9,10 @@
 #FROM ultralytics/ultralytics:latest-cpu
 
 ## JetPack5.1.2 on Jetson Xavier NX, AGX Xavier, AGX Orin, Orin Nano and Orin NX
-FROM ultralytics/ultralytics:latest-jetson-jetpack5
+# FROM ultralytics/ultralytics:latest-jetson-jetpack5
 
 ## JetPack6.1 on Jetson AGX Orin, Orin NX and Orin Nano Series
-# FROM ultralytics/ultralytics:latest-jetson-jetpack6
+FROM ultralytics/ultralytics:latest-jetson-jetpack6
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV TZ="Europe/Amsterdam"
