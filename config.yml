@@ -48,7 +48,7 @@ model_conversion_pipeline:
 
 logging:
   loglevel_own: DEBUG  # override loglevel for packages defined in `own_packages`
-  own_packages: ["__main__", "oor_on_edge", "detection_pipeline", "data_delivery_pipeline", "performance_monitoring"]
+  own_packages: ["__main__", "oor_on_edge", "detection_pipeline", "data_delivery_pipeline", "model_conversion_pipeline", "performance_monitoring"]
   basic_config:
     # log config as arguments to `logging.basicConfig`
     level: WARNING
