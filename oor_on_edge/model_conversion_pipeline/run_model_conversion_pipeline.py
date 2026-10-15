@@ -17,6 +17,9 @@ def main():
         model_name=settings["detection_pipeline"]["model_name"],
         image_size=settings["detection_pipeline"]["inference_params"]["img_size"],
         model_save_path=settings["detection_pipeline"]["pretrained_model_path"],
+        overwrite_if_exists=settings["model_conversion_pipeline"][
+            "overwrite_if_exists"
+        ],
     )
 
 

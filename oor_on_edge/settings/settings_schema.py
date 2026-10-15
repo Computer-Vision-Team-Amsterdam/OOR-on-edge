@@ -65,6 +65,10 @@ class DetectionPipelineSpec(SettingsSpecModel):
     save_blurred_labels: bool = False
 
 
+class ModelConversionPipelineSpec(SettingsSpecModel):
+    overwrite_if_exists: bool = False
+
+
 class LoggingSpec(SettingsSpecModel):
     loglevel_own: str = "INFO"
     own_packages: List[str] = [
@@ -93,4 +97,5 @@ class OOROnEdgeSettingsSpec(SettingsSpecModel):
     azure_iot: AzureIoTSpec
     data_delivery_pipeline: DataDeliveryPipelineSpec
     detection_pipeline: DetectionPipelineSpec
+    model_conversion_pipeline: ModelConversionPipelineSpec
     logging: LoggingSpec = LoggingSpec()

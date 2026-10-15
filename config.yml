@@ -48,6 +48,9 @@ detection_pipeline:
   training_mode_destination_path: "/training_mode"
   save_blurred_labels: False  # If True, annotations of blurred objects will be saved in training_mode_destination_path
 
+model_conversion_pipeline:
+  overwrite_if_exists: False  # Whether to recompile the model even if a compiled version already exists
+
 logging:
   loglevel_own: DEBUG  # override loglevel for packages defined in `own_packages`
   own_packages: ["__main__", "oor_on_edge", "detection_pipeline", "data_delivery_pipeline", "performance_monitoring"]
