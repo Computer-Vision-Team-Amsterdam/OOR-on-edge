@@ -15,6 +15,8 @@ logger = logging.getLogger("detection_pipeline")
 
 
 class ModelResult:
+    VALID_BLUR_MODES = ["box", "gaussian"]
+
     def __init__(
         self,
         model_result: Results,
@@ -26,6 +28,7 @@ class ModelResult:
         save_blurred_labels: bool = False,
         blurred_labels_folder: Optional[str] = None,
         draw_boxes: bool = True,
+        blur_mode: str = "gaussian",
     ) -> None:
         """
         Create a ModelResult object that can process the results of (YOLO) model
@@ -52,16 +55,25 @@ class ModelResult:
             Folder where to store the detection metadata for sensitive classes
         draw_boxes: bool = True
             Whether to draw bounding boxes for target class objects
+        blur_mode: str = "gaussian"
+            Whether to blur by simply pasting a gray box ("box") or make it look
+            nice by applying a Gaussian blue ("gaussian").
 
         Raises
         ------
         ValueError:
             when blurred_labels_folder is not set while save_blurred_labels is
             True
+        ValueError:
+            when blur_mode is not one of ["box", "gaussian"]
         """
         if save_blurred_labels and (not blurred_labels_folder):
             raise ValueError(
                 "Argument blurred_labels_folder must be set when save_blurred_labels is True."
+            )
+        if blur_mode not in self.VALID_BLUR_MODES:
+            raise ValueError(
+                f"Argument blur_mode must be one of {self.VALID_BLUR_MODES}, got {blur_mode} instead."
             )
         self.result = model_result.cpu()
         self.frame_metadata = frame_metadata
@@ -74,6 +86,7 @@ class ModelResult:
         self.save_blurred_labels = save_blurred_labels
         self.blurred_labels_folder = blurred_labels_folder
         self.draw_boxes = draw_boxes
+        self.blur_mode = blur_mode
 
     def process_detections_and_blur_sensitive_data(
         self, image_detection_path: str, image_file_name: str
@@ -248,14 +261,52 @@ class ModelResult:
 
         return x_min, y_min, x_max, y_max
 
+    def _blur(
+        self,
+        box: Tuple[int, int, int, int],
+        gaussian_kernel_size: int = 165,
+        box_gray: int = 150,
+        box_weight: float = 1.0,
+    ) -> None:
+        """
+        Apply either Box Blur of Gaussian Blur with given kernel size to the
+        area given by the bounding box, depending on the `blur_mode`.
+
+        Parameters
+        ----------
+        box : Tuple[int, int, int, int]
+            Bounding box in pixels of the area to blur, in the format (xmin, ymin,
+            xmax, ymax).
+        blur_kernel_size : int (default: 165)
+            Kernel size (used for both width and height) for GaussianBlur.
+        box_gray: int = 150
+            Gray scale value to use for box blur.
+        box_weight: float = 1.0
+            Weight of the box in case of box blur. Lower values reveal more of
+            the original image.
+        """
+        x_min, y_min, x_max, y_max = box
+
+        if self.blur_mode == "gaussian":
+            area_to_blur = self.image[y_min:y_max, x_min:x_max]
+            blurred = cv2.GaussianBlur(
+                area_to_blur, (gaussian_kernel_size, gaussian_kernel_size), 0
+            )
+            self.image[y_min:y_max, x_min:x_max] = blurred
+        elif self.blur_mode == "box":
+            area_to_blur = self.image[y_min:y_max, x_min:x_max]
+            blur_box = np.ones(area_to_blur.shape, dtype=np.uint8) * box_gray
+            self.image[y_min:y_max, x_min:x_max] = cv2.addWeighted(
+                area_to_blur, 1 - box_weight, blur_box, box_weight, 0.0
+            )
+
     def blur_inside_boxes(
         self,
         boxes: Union[List[Tuple[float, float, float, float]], npt.NDArray[np.float64]],
-        blur_kernel_size: int = 165,
         box_padding: int = 0,
     ):
         """
-        Apply GaussianBlur with given kernel size to the area given by the
+        Apply blurring depending on `blur_mode` to the area given by the
         bounding box(es).
 
         Parameters
@@ -263,8 +314,6 @@ class ModelResult:
         boxes : List[Tuple[float, float, float, float]]
             Bounding box(es) of the area(s) to blur, in the format (xmin, ymin,
             xmax, ymax).
-        blur_kernel_size : int (default: 165)
-            Kernel size (used for both width and height) for GaussianBlur.
         box_padding : int (default: 0)
             Optional: increase box by this amount of pixels before applying the
             blur.
@@ -279,20 +328,15 @@ class ModelResult:
             x_max = min(img_width, x_max + box_padding)
             y_max = min(img_height, y_max + box_padding)
 
-            area_to_blur = self.image[y_min:y_max, x_min:x_max]
-            blurred = cv2.GaussianBlur(
-                area_to_blur, (blur_kernel_size, blur_kernel_size), 0
-            )
-            self.image[y_min:y_max, x_min:x_max] = blurred
+            self._blur(box=(x_min, y_min, x_max, y_max))
 
     def blur_outside_boxes(
         self,
         boxes: Union[List[Tuple[float, float, float, float]], npt.NDArray[np.float64]],
-        blur_kernel_size: int = 165,
         box_padding: int = 0,
     ):
         """
-        Apply GaussianBlur with given kernel size to the area outside the given
+        Apply blurring depending on `blur_mode` to the area outside the given
         bounding box(es).
 
         Parameters
@@ -300,17 +344,15 @@ class ModelResult:
         boxes : List[Tuple[float, float, float, float]]
             Bounding box(es) outside which to blur, in the format (xmin, ymin,
             xmax, ymax).
-        blur_kernel_size : int (default: 165)
-            Kernel size (used for both width and height) for GaussianBlur.
         box_padding : int (default: 0)
             Optional: increase box by this amount of pixels before applying the
             blur.
         """
         img_height, img_width, _ = self.image.shape
 
-        blurred_image = cv2.GaussianBlur(
-            self.image, (blur_kernel_size, blur_kernel_size), 0
-        )
+        orig_image = self.image.copy()
+
+        self._blur(box=(0, 0, img_width, img_height))
 
         for box in boxes:
             x_min, y_min, x_max, y_max = map(int, box)
@@ -320,11 +362,7 @@ class ModelResult:
             x_max = min(img_width, x_max + box_padding)
             y_max = min(img_height, y_max + box_padding)
 
-            blurred_image[y_min:y_max, x_min:x_max] = self.image[
-                y_min:y_max, x_min:x_max
-            ]
-
-        self.image = blurred_image
+            self.image[y_min:y_max, x_min:x_max] = orig_image[y_min:y_max, x_min:x_max]
 
     def crop_outside_boxes(
         self,

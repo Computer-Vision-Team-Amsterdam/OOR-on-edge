@@ -15,21 +15,21 @@ repos:
   #       verbose: true
   #       always_run: true
   - repo: https://github.com/timothycrosley/isort
-    rev: 9.0.0a3
+    rev: 9.0.2
     hooks:
     - id: isort
       additional_dependencies: [toml]
   - repo: https://github.com/psf/black
-    rev: 26.5.1
+    rev: 26.10.0
     hooks:
       - id: black
   - repo: https://github.com/PYCQA/flake8
-    rev: 7.3.0
+    rev: 7.4.1
     hooks:
       - id: flake8
         exclude: ^.venv
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.1.0
+    rev: v2.4.0
     hooks:
     - id: mypy
       additional_dependencies: [types-PyYAML, types-requests]
