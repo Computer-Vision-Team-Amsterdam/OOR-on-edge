@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=70.0.0"]
+requires = ["setuptools>=83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -16,13 +16,14 @@ maintainers = [
     { name = "Computer Vision Team, Gemeente Amsterdam", email = "cvt@amsterdam.nl" },
 ]
 readme = "README.md"
-requires-python = ">=3.8, <=3.12"
+requires-python = ">=3.8"
 dependencies = [
     "aml_interface",
     "azure-iot-device>=2.13",
     "cvtoolkit",
     "numpy>=1.24.2",
     "opencv-python>=4.6.0",
+    "packaging>=26.0",
     "pyproj>=3.5",
     "ultralytics>=8.3",
 ]

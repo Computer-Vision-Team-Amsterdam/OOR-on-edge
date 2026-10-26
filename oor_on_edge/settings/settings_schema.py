@@ -43,14 +43,15 @@ class DetectionPipelineSpec(SettingsSpecModel):
     model_name: str
     pretrained_model_path: str
     inference_params: InferenceModelParameters
-    defisheye_flag: bool
-    defisheye_params: DefisheyeParameters
+    defisheye_flag: Optional[bool] = False
+    defisheye_params: Optional[DefisheyeParameters] = None
     target_classes: List[int]
     sensitive_classes: List[int]
     output_image_size: Optional[Tuple[int, int]] = None
     target_classes_conf: Optional[float] = None
     sensitive_classes_conf: Optional[float] = None
     draw_bounding_boxes: bool = True
+    blur_mode: str = "gaussian"
     skip_invalid_gps: bool = False
     acceptable_gps_delay: float = float("inf")
     speedometer_ema_factor: float
@@ -62,6 +63,10 @@ class DetectionPipelineSpec(SettingsSpecModel):
     training_mode: bool
     training_mode_destination_path: str
     save_blurred_labels: bool = False
+
+
+class ModelConversionPipelineSpec(SettingsSpecModel):
+    overwrite_if_exists: bool = False
 
 
 class LoggingSpec(SettingsSpecModel):
@@ -92,4 +97,5 @@ class OOROnEdgeSettingsSpec(SettingsSpecModel):
     azure_iot: AzureIoTSpec
     data_delivery_pipeline: DataDeliveryPipelineSpec
     detection_pipeline: DetectionPipelineSpec
+    model_conversion_pipeline: ModelConversionPipelineSpec
     logging: LoggingSpec = LoggingSpec()

@@ -23,11 +23,11 @@ class FrameMetadata:
             The JSON metadata file. Is expected to contain at least:
 
             {
-                "image_file_timestamp": timestamp,  # in iso format
+                "image_file_timestamp": str,  # timestamp in iso format
                 "image_file_name": str,  # filename of the image
                 "image_path": str,  # full path of the image file
                 "gps_data": {
-                    "coordinate_time_stamp": timestamp,  # in iso format
+                    "coordinate_time_stamp": str,  # timestamp in iso format
                     "latitude": float,
                     "longitude": float
                 }
